@@ -2,7 +2,7 @@
 /*
  * de.unkrig.doclet.ant - A doclet which generates metadata documents for an APACHE ANT extension
  *
- * Copyright (c) 2014, Arno Unkrig
+ * Copyright (c) 2015, Arno Unkrig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the

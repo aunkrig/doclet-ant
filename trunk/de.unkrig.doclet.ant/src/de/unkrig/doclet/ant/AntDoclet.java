@@ -2,7 +2,7 @@
 /*
  * de.unkrig.doclet.ant - A doclet which generates metadata documents for an APACHE ANT extension
  *
- * Copyright (c) 2014, Arno Unkrig
+ * Copyright (c) 2015, Arno Unkrig
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -159,7 +159,7 @@ class AntDoclet {
 
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
 
-            String taskName = taskdefElement.getAttribute("name");
+            final String taskName = taskdefElement.getAttribute("name");
             if (taskName == null) {
                 rootDoc.printError(antlibFile + ": Taskdef '" + taskdefElement + "' lacks the name");
                 continue;
@@ -175,6 +175,37 @@ class AntDoclet {
             if (classDoc == null) {
                 rootDoc.printError("Class '" + taskClassname + "' not found for ANT task '" + taskName + "'");
                 continue;
+            }
+
+            if (htmlOutputDirectory != null) {
+                FileUtil.printToFile(
+                    new File(htmlOutputDirectory, "/tasks/" + taskName + ".html"),
+                    Charset.forName("ISO8859-1"),
+                    new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
+
+                        @Override public void
+                        consume(PrintWriter pw) {
+
+                            String htmlText;
+                            try {
+                                htmlText = html.fromTags(classDoc.inlineTags(), classDoc, rootDoc);
+                            } catch (Longjump e) {
+                                return;
+                            }
+
+                            pw.println("<!DOCTYPE html>");
+                            pw.println("  <html>");
+                            pw.println("  <head>");
+                            pw.println("    <title>Task &lt;" + taskName + "&gt;</title>");
+                            pw.println("  </head>");
+                            pw.println();
+                            pw.println("  <body>");
+                            pw.write(htmlText);
+                            pw.println("  </body>");
+                            pw.println("</html>");
+                        }
+                    }
+                );
             }
 
             if (mediawikiOutputDirectory != null) {
