@@ -1,6 +1,6 @@
 
 /*
- * de.unkrig.doclet.cs - A doclet which generates metadata documents for a CheckStyle extension
+ * de.unkrig.doclet.ant - A doclet which generates metadata documents for an APACHE ANT extension
  *
  * Copyright (c) 2014, Arno Unkrig
  * All rights reserved.
@@ -25,7 +25,7 @@
  */
 
 /**
- * Main package of the plugin.
+ * Main package of the tool.
  */
 @NotNullByDefault
 package de.unkrig.doclet.ant;
