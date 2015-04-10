@@ -1,6 +1,6 @@
 
 /*
- * de.unkrig.doclet.cs - A doclet which generates metadata documents for a CheckStyle extension
+ * de.unkrig.doclet.ant - A doclet which generates metadata documents for an APACHE ANT extension
  *
  * Copyright (c) 2014, Arno Unkrig
  * All rights reserved.
@@ -83,7 +83,8 @@ class AntDoclet {
     optionLength(String option) {
 
         if ("-antlib-file".equals(option)) return 2;
-        if ("-output-directory".equals(option)) return 2;
+        if ("-html-output-directory".equals(option)) return 2;
+        if ("-mediawiki-output-directory".equals(option)) return 2;
         if ("-linkoffline".equals(option)) return 3;
 
         return 0;
@@ -96,16 +97,20 @@ class AntDoclet {
     public static boolean
     start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException {
 
-        File                                              antlibFile       = new File("antlib.xml");
-        File                                              outputDirectory  = new File(".");
-        final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<String, URL>();
+        File                                              antlibFile               = new File("antlib.xml");
+        File                                              htmlOutputDirectory      = null;
+        File                                              mediawikiOutputDirectory = null;
+        final Map<String /*packageName*/, URL /*target*/> externalJavadocs         = new HashMap<String, URL>();
 
         for (String[] option : rootDoc.options()) {
             if ("-antlib-file".equals(option[0])) {
                 antlibFile = new File(option[1]);
             } else
-            if ("-output-directory".equals(option[0])) {
-                outputDirectory = new File(option[1]);
+            if ("-html-output-directory".equals(option[0])) {
+                htmlOutputDirectory = new File(option[1]);
+            } else
+            if ("-mediawiki-output-directory".equals(option[0])) {
+                mediawikiOutputDirectory = new File(option[1]);
             } else
             if ("-linkoffline".equals(option[0])) {
                 URL targetUrl      = new URL(option[1]);
@@ -138,6 +143,12 @@ class AntDoclet {
             }
         }
 
+        if (htmlOutputDirectory == null && mediawikiOutputDirectory == null) {
+            rootDoc.printError(
+                "Exactly one of '-html-output-directory' and '-mediawiki-output-directory' must be given"
+            );
+        }
+
         final Html html = new Html(externalJavadocs);
 
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -166,27 +177,29 @@ class AntDoclet {
                 continue;
             }
 
-            FileUtil.printToFile(
-                new File(outputDirectory, "/tasks/" + taskName + ".mw"),
-                Charset.forName("ISO8859-1"),
-                new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
+            if (mediawikiOutputDirectory != null) {
+                FileUtil.printToFile(
+                    new File(mediawikiOutputDirectory, "/tasks/" + taskName + ".mw"),
+                    Charset.forName("ISO8859-1"),
+                    new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
-                    @Override public void
-                    consume(PrintWriter pw) {
+                        @Override public void
+                        consume(PrintWriter pw) {
 
-                        String htmlText;
-                        try {
-                            htmlText = html.fromTags(classDoc.inlineTags(), classDoc, rootDoc);
-                        } catch (Longjump e) {
-                            return;
+                            String htmlText;
+                            try {
+                                htmlText = html.fromTags(classDoc.inlineTags(), classDoc, rootDoc);
+                            } catch (Longjump e) {
+                                return;
+                            }
+
+                            String mediawiki = Mediawiki.fromHtml(htmlText);
+
+                            pw.write(mediawiki);
                         }
-
-                        String mediawiki = Mediawiki.fromHtml(htmlText);
-
-                        pw.write(mediawiki);
                     }
-                }
-            );
+                );
+            }
         }
         return true;
     }
