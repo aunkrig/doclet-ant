@@ -55,6 +55,7 @@ import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.RootDoc;
+import com.sun.javadoc.Tag;
 
 import de.unkrig.commons.doclet.Docs;
 import de.unkrig.commons.doclet.Html;
@@ -63,6 +64,7 @@ import de.unkrig.commons.file.FileUtil;
 import de.unkrig.commons.io.LineUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
+import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
 
 /**
@@ -76,30 +78,39 @@ import de.unkrig.commons.text.CamelCase;
 public final
 class AntDoclet {
 
+    private static final Pattern SET_XYZ_METHOD_NAME    = Pattern.compile("set([A-Z]\\w*)");
+    private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
+    private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?([A-Z]\\w*)");
+    private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
+
     private static final
     class AntAttribute {
 
-        final String name;
-        final String type;
-        final String htmlText;
+        final String           name;
+        final String           typeName;
+        final String           htmlText;
+        @Nullable final String defaultValue;
 
         public
-        AntAttribute(String name, String type, String htmlText) {
-            this.name     = name;
-            this.type     = type;
-            this.htmlText = htmlText;
+        AntAttribute(String name, String typeName, String htmlText, @Nullable String defaultValue) {
+            this.name         = name;
+            this.typeName     = typeName;
+            this.htmlText     = htmlText;
+            this.defaultValue = defaultValue;
         }
     }
 
     private static final
     class AntSubelement {
 
-        final String name;
-        final String htmlText;
+        @Nullable final String name;
+        final String           typeName;
+        final String           htmlText;
 
         public
-        AntSubelement(String name, String htmlText) {
+        AntSubelement(@Nullable String name, String typeName, String htmlText) {
             this.name     = name;
+            this.typeName = typeName;
             this.htmlText = htmlText;
         }
     }
@@ -222,51 +233,84 @@ class AntDoclet {
 
                 try {
 
+                    String text = html.fromTags(md.inlineTags(), classDoc, rootDoc);
+                    {
+                        Tag[] seeTags = md.tags("@see");
+                        if (seeTags.length > 0) {
+                            StringBuilder sb = new StringBuilder(text);
+                            sb.append("<dl><dt>See also:</dt>");
+                            for (Tag seeTag : seeTags) {
+                                sb.append("<dd>");
+                                sb.append(html.resolveTarget(seeTag.text(), null, md, rootDoc));
+                                sb.append("</dd>");
+                            }
+                            sb.append("</dl>");
+
+                            text = sb.toString();
+                        }
+                    }
+
                     Matcher m;
                     if (
-                        (m = Pattern.compile("set([A-Z]\\w*)").matcher(methodName)).matches()
+                        (m = SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 1
                     ) {
-                        String name = CamelCase.toLowerCamelCase(m.group(1));
-                        String type = methodParameters[0].typeName();
+                        String name     = CamelCase.toLowerCamelCase(m.group(1));
+                        String typeName = methodParameters[0].typeName();
+                        String defaultValue;
+
+                        Tag[] dvt = md.tags("@defaultValue");
+                        if (dvt.length == 0) {
+                            defaultValue = null;
+                        } else {
+                            if (dvt.length > 1) {
+                                rootDoc.printWarning("Only one '@defaultValue' tag is allowed");
+                            }
+                            defaultValue = html.fromJavadocText(dvt[0].text(), md, rootDoc);
+                        }
 
                         attributes.add(new AntAttribute(
                             name,
-                            type,
-                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                            typeName,
+                            text,
+                            defaultValue
                         ));
                     } else
                     if (
-                        (m = Pattern.compile("create([A-Z]\\w*)").matcher(methodName)).matches()
+                        (m = CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 0
                     ) {
-                        String name = CamelCase.toLowerCamelCase(m.group(1));
+                        String typeName = md.returnType().toString();//CamelCase.toLowerCamelCase(m.group(1));
 
                         subelements.add(new AntSubelement(
-                            name,
-                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                            null, // name
+                            typeName,
+                            text
                         ));
                     } else
                     if (
-                        (m = Pattern.compile("add(?:Configured)?([A-Z]\\w*)").matcher(methodName)).matches()
+                        (m = ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 1
                     ) {
-                        String name = CamelCase.toLowerCamelCase(m.group(1));
+                        String name     = CamelCase.toLowerCamelCase(m.group(1));
+                        String typeName = methodParameters[0].typeName();
 
                         subelements.add(new AntSubelement(
                             name,
-                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                            typeName,
+                            text
                         ));
                     } else
                     if (
-                        (m = Pattern.compile("add(?:Configured)?").matcher(methodName)).matches()
+                        (m = ADD_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 1
                     ) {
                         String typeName = methodParameters[0].typeName();
 
                         subelements.add(new AntSubelement(
+                            null, // name
                             typeName,
-                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                            text
                         ));
                     }
                 } catch (Longjump l) {}
@@ -296,7 +340,88 @@ class AntDoclet {
                             pw.println("  </head>");
                             pw.println();
                             pw.println("  <body>");
+                            pw.println("    <h1><code>&lt;" + taskName + "></code> Task</h1>");
+                            pw.println();
                             pw.write(htmlText);
+
+                            if (!attributes.isEmpty()) {
+                                pw.println();
+                                pw.println("    <h2>Attributes</h2>");
+                                pw.println();
+                                pw.println("    <p>Default values are <u>underlined</u>.</p>");
+                                pw.println();
+                                pw.println("    <dl>");
+                                for (AntAttribute attribute : attributes) {
+                                    String rhs;
+                                    if ("boolean".equals(attribute.typeName)) {
+                                        rhs = (
+                                            Boolean.parseBoolean(attribute.defaultValue)
+                                            ? "<u>true</u>|false"
+                                            : "true|<u>false</u>"
+                                        );
+                                    } else
+                                    if (
+                                        "short".equals(attribute.typeName)
+                                        || "int".equals(attribute.typeName)
+                                        || "long".equals(attribute.typeName)
+                                        || "float".equals(attribute.typeName)
+                                        || "double".equals(attribute.typeName)
+                                    ) {
+                                        rhs = "<i>N</i>";
+                                        if (attribute.defaultValue != null) {
+                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
+                                        }
+                                    } else
+                                    if ("char".equals(attribute.typeName)) {
+                                        rhs = "<i>character</i>";
+                                        if (attribute.defaultValue != null) {
+                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
+                                        }
+                                    } else
+                                    if ("String".equals(attribute.typeName)) {
+                                        rhs = "<i>string</i>";
+                                        if (attribute.defaultValue != null) {
+                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
+                                        }
+                                    } else
+                                    {
+                                        rhs = "<i>" + CamelCase.toHyphenSeparated(attribute.typeName) + "</i>";
+                                        if (attribute.defaultValue != null) {
+                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
+                                        }
+                                    }
+                                    pw.println("      <dt>");
+                                    pw.println("        <a name=\"" + attribute.name + "\" />");
+                                    pw.println("        <code>" + attribute.name + "=\"" + rhs + "\"</code>");
+                                    pw.println("      </dt>");
+                                    pw.println("      <dd>");
+                                    pw.println("        " + attribute.htmlText.replaceAll("\\s+", " "));
+                                    pw.println("      </dd>");
+                                }
+                                pw.println("    </dl>");
+                            }
+
+                            if (!subelements.isEmpty()) {
+                                pw.println();
+                                pw.println("    <h2>Subelements</h2>");
+                                pw.println();
+                                pw.println("    <dl>");
+                                for (AntSubelement subelement : subelements) {
+                                    pw.println("      <dt>");
+                                    if (subelement.name != null) {
+                                        pw.println("        <a name=\"" + subelement.name + "\" />");
+                                        pw.println("        <code>&lt;" + subelement.name + "></code>");
+                                    } else {
+                                        pw.println("        <a name=\"" + subelement.typeName + "\" />");
+                                        pw.println("        Any <code>" + subelement.typeName + "</code>");
+                                    }
+                                    pw.println("      </dt>");
+                                    pw.println("      <dd>");
+                                    pw.println("        " + subelement.htmlText.replaceAll("\\s+", " "));
+                                    pw.println("      </dd>");
+                                }
+                                pw.println("    </dl>");
+                            }
                             pw.println("  </body>");
                             pw.println("</html>");
                         }
@@ -392,14 +517,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return idx < nl.getLength(); }
+                    hasNext() { return this.idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
                         return result;
                     }
 
