@@ -280,13 +280,10 @@ class AntDoclet {
                         (m = CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 0
                     ) {
+                        String name     = CamelCase.toLowerCamelCase(m.group(1));
                         String typeName = md.returnType().toString();//CamelCase.toLowerCamelCase(m.group(1));
 
-                        subelements.add(new AntSubelement(
-                            null, // name
-                            typeName,
-                            text
-                        ));
+                        subelements.add(new AntSubelement(name, typeName, text));
                     } else
                     if (
                         (m = ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
@@ -367,25 +364,25 @@ class AntDoclet {
                                         || "float".equals(attribute.typeName)
                                         || "double".equals(attribute.typeName)
                                     ) {
-                                        rhs = "<i>N</i>";
+                                        rhs = "<var>N</var>";
                                         if (attribute.defaultValue != null) {
                                             rhs += "|<u>" + attribute.defaultValue + "</u>";
                                         }
                                     } else
                                     if ("char".equals(attribute.typeName)) {
-                                        rhs = "<i>character</i>";
+                                        rhs = "<var>character</var>";
                                         if (attribute.defaultValue != null) {
                                             rhs += "|<u>" + attribute.defaultValue + "</u>";
                                         }
                                     } else
                                     if ("String".equals(attribute.typeName)) {
-                                        rhs = "<i>string</i>";
+                                        rhs = "<var>string</var>";
                                         if (attribute.defaultValue != null) {
                                             rhs += "|<u>" + attribute.defaultValue + "</u>";
                                         }
                                     } else
                                     {
-                                        rhs = "<i>" + CamelCase.toHyphenSeparated(attribute.typeName) + "</i>";
+                                        rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.typeName) + "</var>";
                                         if (attribute.defaultValue != null) {
                                             rhs += "|<u>" + attribute.defaultValue + "</u>";
                                         }
