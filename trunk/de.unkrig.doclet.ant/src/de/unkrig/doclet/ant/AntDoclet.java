@@ -32,11 +32,14 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -49,6 +52,8 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import com.sun.javadoc.ClassDoc;
+import com.sun.javadoc.MethodDoc;
+import com.sun.javadoc.Parameter;
 import com.sun.javadoc.RootDoc;
 
 import de.unkrig.commons.doclet.Docs;
@@ -58,6 +63,7 @@ import de.unkrig.commons.file.FileUtil;
 import de.unkrig.commons.io.LineUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
+import de.unkrig.commons.text.CamelCase;
 
 /**
  * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts
@@ -69,6 +75,34 @@ import de.unkrig.commons.lang.protocol.Longjump;
  */
 public final
 class AntDoclet {
+
+    private static final
+    class AntAttribute {
+
+        final String name;
+        final String type;
+        final String htmlText;
+
+        public
+        AntAttribute(String name, String type, String htmlText) {
+            this.name     = name;
+            this.type     = type;
+            this.htmlText = htmlText;
+        }
+    }
+
+    private static final
+    class AntSubelement {
+
+        final String name;
+        final String htmlText;
+
+        public
+        AntSubelement(String name, String htmlText) {
+            this.name     = name;
+            this.htmlText = htmlText;
+        }
+    }
 
     /**
      * Doclets are never instantiated.
@@ -151,6 +185,8 @@ class AntDoclet {
 
         final Html html = new Html(externalJavadocs);
 
+        // Parse the given ANTLIB file; see
+        // https://ant.apache.org/manual/Types/antlib.html
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
         Document               document               = documentBuilder.parse(antlibFile);
@@ -177,6 +213,66 @@ class AntDoclet {
                 continue;
             }
 
+            // Deduce attributes and subelements from the special methods that ANT uses.
+            final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
+            final List<AntSubelement> subelements = new ArrayList<AntSubelement>();
+            for (MethodDoc md : classDoc.methods()) {
+                String      methodName       = md.name();
+                Parameter[] methodParameters = md.parameters();
+
+                try {
+
+                    Matcher m;
+                    if (
+                        (m = Pattern.compile("set([A-Z]\\w*)").matcher(methodName)).matches()
+                        && methodParameters.length == 1
+                    ) {
+                        String name = CamelCase.toLowerCamelCase(m.group(1));
+                        String type = methodParameters[0].typeName();
+
+                        attributes.add(new AntAttribute(
+                            name,
+                            type,
+                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                        ));
+                    } else
+                    if (
+                        (m = Pattern.compile("create([A-Z]\\w*)").matcher(methodName)).matches()
+                        && methodParameters.length == 0
+                    ) {
+                        String name = CamelCase.toLowerCamelCase(m.group(1));
+
+                        subelements.add(new AntSubelement(
+                            name,
+                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                        ));
+                    } else
+                    if (
+                        (m = Pattern.compile("add(?:Configured)?([A-Z]\\w*)").matcher(methodName)).matches()
+                        && methodParameters.length == 1
+                    ) {
+                        String name = CamelCase.toLowerCamelCase(m.group(1));
+
+                        subelements.add(new AntSubelement(
+                            name,
+                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                        ));
+                    } else
+                    if (
+                        (m = Pattern.compile("add(?:Configured)?").matcher(methodName)).matches()
+                        && methodParameters.length == 1
+                    ) {
+                        String typeName = methodParameters[0].typeName();
+
+                        subelements.add(new AntSubelement(
+                            typeName,
+                            html.fromTags(md.inlineTags(), classDoc, rootDoc)
+                        ));
+                    }
+                } catch (Longjump l) {}
+            }
+
+            // Produce HTML output iff requested.
             if (htmlOutputDirectory != null) {
                 FileUtil.printToFile(
                     new File(htmlOutputDirectory, "/tasks/" + taskName + ".html"),
@@ -208,6 +304,7 @@ class AntDoclet {
                 );
             }
 
+            // Produce WIKIMEDIA markup output iff requested.
             if (mediawikiOutputDirectory != null) {
                 FileUtil.printToFile(
                     new File(mediawikiOutputDirectory, "/tasks/" + taskName + ".mw"),
@@ -224,14 +321,61 @@ class AntDoclet {
                                 return;
                             }
 
+                            pw.println("<div style=\"font-size:16pt\"><code>'''<" + taskName + ">'''</code></div>");
+                            pw.println();
                             String mediawiki = Mediawiki.fromHtml(htmlText);
+                            pw.println(mediawiki);
 
-                            pw.write(mediawiki);
+                            if (!attributes.isEmpty()) {
+                                pw.println();
+                                pw.println("== Attributes ==");
+                                pw.println();
+                                pw.println("Default values are <u>underlined</u>.");
+                                pw.println();
+                                for (AntAttribute attribute : attributes) {
+                                    pw.println(
+                                        ";<div id=\""
+                                        + attribute.name
+                                        + "\"></div><code>"
+                                        + attribute.name
+                                        + "=\"''text''\"</code>"
+                                    );
+                                    pw.println(':' + Mediawiki.fromHtml(attribute.htmlText.replaceAll("\\s+", " ")));
+                                }
+                            }
+
+                            if (!subelements.isEmpty()) {
+                                pw.println();
+                                pw.println("== Subelements ==");
+                                pw.println();
+                                for (AntSubelement subelement : subelements) {
+                                    pw.println(";<div id=\"" + subelement.name + "\"></div>" + subelement.name);
+                                    pw.println(':' + Mediawiki.fromHtml(subelement.htmlText.replaceAll("\\s+", " ")));
+
+                                }
+                            }
                         }
                     }
                 );
             }
         }
+
+        if (document.getElementsByTagName("typedef").getLength() > 0) {
+            rootDoc.printWarning("<typedef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("macrodef").getLength() > 0) {
+            rootDoc.printWarning("<macrodef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("presetdef").getLength() > 0) {
+            rootDoc.printWarning("<presetdef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+            rootDoc.printWarning("<scriptdef>s are not yet supported");
+        }
+
         return true;
     }
 
@@ -248,14 +392,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return this.idx < nl.getLength(); }
+                    hasNext() { return idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
                         return result;
                     }
 
