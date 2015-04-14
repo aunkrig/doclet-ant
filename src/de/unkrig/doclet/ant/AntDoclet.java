@@ -71,6 +71,7 @@ import de.unkrig.commons.io.LineUtil;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
+import de.unkrig.commons.lang.protocol.TransformerWhichThrows;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
 
@@ -91,22 +92,6 @@ class AntDoclet {
     private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
     private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?([A-Z]\\w*)");
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
-
-    /**
-     * Regular expression for an HTML link.
-     * <dl>
-     *   <dd>$1: Text before the {@code href} attribute value, e.g. "{@code <a class='foo' href='}"
-     *   <dd>$2: Value of the {@code href} attribute, including quotes
-     *   <dd>$3: Text after the {@code href} attribute value, e.g. "{@code '>}"
-     *   <dd>$4: Body of the link element, e.g. "{@code here}"
-     *   <dd>$5: The closing tag, e.g. "{@code </a>}"
-     * </dl>
-     */
-    private static final Pattern
-    HTML_LINK = Pattern.compile(
-        "(<\\s*a\\b[^>]*\\bhref\\s*=\\s*[\"'])([^\"']*)([\"'][^>]*>)(.*?)(<\\s*/\\s*a\\s*>)",
-        Pattern.CASE_INSENSITIVE
-    );
 
     private static final
     class AntTask {
@@ -299,9 +284,9 @@ class AntDoclet {
 
                             sb.append("<dl><dt>See also:</dt>");
                             for (Tag seeTag : seeTags) {
-                                sb.append("<dd>");
+                                sb.append("<dd><code>");
                                 sb.append(html.resolveTarget(seeTag.text(), null, md, rootDoc));
-                                sb.append("</dd>");
+                                sb.append("</code></dd>");
                             }
                             sb.append("</dl>");
 
@@ -385,7 +370,7 @@ class AntDoclet {
                             pw.println("  <body>");
                             pw.println("    <h1><code>&lt;" + task.name + "></code> Task</h1>");
                             pw.println();
-                            pw.write(htmlText);
+                            pw.write(cookLinks(htmlText, task.classDoc));
 
                             if (!attributes.isEmpty()) {
                                 pw.println();
@@ -436,7 +421,7 @@ class AntDoclet {
                                     {
                                         rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.type.simpleTypeName()) + "</var>";
                                         try {
-                                            attributeTypeHtmlText = this.getSingleStringParameterConstructorHtmlText((ClassDoc) attribute.type, rootDoc);
+                                            attributeTypeHtmlText = getSingleStringParameterConstructorHtmlText((ClassDoc) attribute.type, rootDoc);
                                         } catch (Longjump e) {}
                                         if (attribute.defaultValue != null) rhs += "|<u>" + attribute.defaultValue + "</u>";
                                     }
@@ -446,9 +431,9 @@ class AntDoclet {
                                     pw.println("        <code>" + attribute.name + "=\"" + rhs + "\"</code>");
                                     pw.println("      </dt>");
                                     pw.println("      <dd>");
-                                    pw.println("        " + this.cookLinks(attribute.htmlText.replaceAll("\\s+", " "), attribute.methodDoc));
+                                    pw.println("        " + cookLinks(attribute.htmlText.replaceAll("\\s+", " "), attribute.methodDoc.containingClass()));
                                     if (attributeTypeHtmlText != null) {
-                                        pw.println("        " + this.cookLinks(attributeTypeHtmlText.replaceAll("\\s+", " "), attribute.methodDoc));
+                                        pw.println("        " + cookLinks(attributeTypeHtmlText.replaceAll("\\s+", " "), attribute.methodDoc.containingClass()));
                                     }
                                     pw.println("      </dd>");
                                 }
@@ -480,56 +465,36 @@ class AntDoclet {
                             pw.println("</html>");
                         }
 
-                        private String
-                        cookLinks(String html, Doc ref) {
+                        /**
+                         * Converts JAVADOC links like "{@code ../pkg/tasks/MyClass#setFoo(java.lang.String)}" into
+                         * ANTDOC links like "{@code #foo}".
+                         */
+                        private String cookLinks(String htmlText, final ClassDoc ref) {
 
-                            // Process all links in the HTML code.
-                            StringBuffer sb = new StringBuffer();
-                            Matcher m = HTML_LINK.matcher(html);
-                            while (m.find()) {
-                                String href = m.group(2);
+                            return Html.transFormLinks(htmlText, rootDoc, ref, new TransformerWhichThrows<Doc, String, Longjump>() {
 
-                                Doc doc;
-                                try {
-                                    doc = Docs.findDoc(href, rootDoc, ref);
-                                } catch (Longjump e) {
-                                    continue;
-                                }
-                                assert doc != null : href;
-
-                                REPLACE_HREF: {
+                                @Override
+                                public String transform(Doc doc) throws Longjump {
 
                                     // Link to attribute of same task?
                                     for (AntAttribute attribute : attributes) {
-                                        if (doc == attribute.methodDoc) {
-                                            href = '#' + attribute.name;
-                                            break REPLACE_HREF;
-                                        }
+                                        if (doc == attribute.methodDoc) return '#' + attribute.name;
                                     }
 
                                     // Link to subelement of same task?
                                     for (AntSubelement subelement : subelements) {
-                                        if (doc == subelement.methodDoc) {
-                                            href = '#' + subelement.name;
-                                            break REPLACE_HREF;
-                                        }
+                                        if (doc == subelement.methodDoc) return '#' + subelement.name;
                                     }
 
                                     // Link to other task?
                                     for (AntTask task : tasks) {
-                                        if (doc == task.classDoc) {
-                                            href = task.name;
-                                            break REPLACE_HREF;
-                                        }
+                                        if (doc == task.classDoc) return task.name;
                                     }
 
                                     rootDoc.printError(ref.position(), "Cannot handle link to '" + doc + "'");
+                                    throw new Longjump();
                                 }
-
-                                m.appendReplacement(sb, "$1" + href + "$3$4$5");
-                            }
-                            m.appendTail(sb);
-                            return sb.toString();
+                            });
                         }
 
                         private String
@@ -638,14 +603,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return this.idx < nl.getLength(); }
+                    hasNext() { return idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
                         return result;
                     }
 
