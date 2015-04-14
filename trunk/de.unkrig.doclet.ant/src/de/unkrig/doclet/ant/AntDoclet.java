@@ -52,10 +52,12 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import com.sun.javadoc.ClassDoc;
+import com.sun.javadoc.ConstructorDoc;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.RootDoc;
 import com.sun.javadoc.Tag;
+import com.sun.javadoc.Type;
 
 import de.unkrig.commons.doclet.Docs;
 import de.unkrig.commons.doclet.Html;
@@ -87,14 +89,14 @@ class AntDoclet {
     class AntAttribute {
 
         final String           name;
-        final String           typeName;
+        final Type             type;
         final String           htmlText;
         @Nullable final String defaultValue;
 
         public
-        AntAttribute(String name, String typeName, String htmlText, @Nullable String defaultValue) {
+        AntAttribute(String name, Type type, String htmlText, @Nullable String defaultValue) {
             this.name         = name;
-            this.typeName     = typeName;
+            this.type         = type;
             this.htmlText     = htmlText;
             this.defaultValue = defaultValue;
         }
@@ -104,13 +106,13 @@ class AntDoclet {
     class AntSubelement {
 
         @Nullable final String name;
-        final String           typeName;
+        final Type             type;
         final String           htmlText;
 
         public
-        AntSubelement(@Nullable String name, String typeName, String htmlText) {
+        AntSubelement(@Nullable String name, Type type, String htmlText) {
             this.name     = name;
-            this.typeName = typeName;
+            this.type     = type;
             this.htmlText = htmlText;
         }
     }
@@ -237,7 +239,9 @@ class AntDoclet {
                     {
                         Tag[] seeTags = md.tags("@see");
                         if (seeTags.length > 0) {
+
                             StringBuilder sb = new StringBuilder(text);
+
                             sb.append("<dl><dt>See also:</dt>");
                             for (Tag seeTag : seeTags) {
                                 sb.append("<dd>");
@@ -252,11 +256,11 @@ class AntDoclet {
 
                     Matcher m;
                     if (
-                        (m = SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                        (m = AntDoclet.SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 1
                     ) {
-                        String name     = CamelCase.toLowerCamelCase(m.group(1));
-                        String typeName = methodParameters[0].typeName();
+                        String name = CamelCase.toLowerCamelCase(m.group(1));
+                        Type   type = methodParameters[0].type();
                         String defaultValue;
 
                         Tag[] dvt = md.tags("@defaultValue");
@@ -269,46 +273,33 @@ class AntDoclet {
                             defaultValue = html.fromJavadocText(dvt[0].text(), md, rootDoc);
                         }
 
-                        attributes.add(new AntAttribute(
-                            name,
-                            typeName,
-                            text,
-                            defaultValue
-                        ));
+                        attributes.add(new AntAttribute(name, type, text, defaultValue));
                     } else
                     if (
-                        (m = CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                        (m = AntDoclet.CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 0
                     ) {
-                        String name     = CamelCase.toLowerCamelCase(m.group(1));
-                        String typeName = md.returnType().toString();//CamelCase.toLowerCamelCase(m.group(1));
+                        String name = CamelCase.toLowerCamelCase(m.group(1));
+                        Type   type = md.returnType();
 
-                        subelements.add(new AntSubelement(name, typeName, text));
+                        subelements.add(new AntSubelement(name, type, text));
                     } else
                     if (
-                        (m = ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                        (m = AntDoclet.ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 1
                     ) {
-                        String name     = CamelCase.toLowerCamelCase(m.group(1));
-                        String typeName = methodParameters[0].typeName();
+                        String name = CamelCase.toLowerCamelCase(m.group(1));
+                        Type   type = methodParameters[0].type();
 
-                        subelements.add(new AntSubelement(
-                            name,
-                            typeName,
-                            text
-                        ));
+                        subelements.add(new AntSubelement(name, type, text));
                     } else
                     if (
-                        (m = ADD_METHOD_NAME.matcher(methodName)).matches()
+                        (m = AntDoclet.ADD_METHOD_NAME.matcher(methodName)).matches()
                         && methodParameters.length == 1
                     ) {
-                        String typeName = methodParameters[0].typeName();
+                        Type type = methodParameters[0].type();
 
-                        subelements.add(new AntSubelement(
-                            null, // name
-                            typeName,
-                            text
-                        ));
+                        subelements.add(new AntSubelement(null, type, text));
                     }
                 } catch (Longjump l) {}
             }
@@ -349,44 +340,42 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntAttribute attribute : attributes) {
+
+                                    // See http://ant.apache.org/manual/develop.html#set-magic
                                     String rhs;
-                                    if ("boolean".equals(attribute.typeName)) {
-                                        rhs = (
-                                            Boolean.parseBoolean(attribute.defaultValue)
-                                            ? "<u>true</u>|false"
-                                            : "true|<u>false</u>"
-                                        );
+                                    String qtn = attribute.type.qualifiedTypeName();
+                                    if ("boolean".equals(qtn)) {
+                                        if (attribute.defaultValue != null) {
+                                            rhs = Boolean.toString(!Boolean.parseBoolean(attribute.defaultValue));
+                                        } else {
+                                            rhs = "true|<u>false</u>";
+                                        }
+                                    } else
+                                    if (attribute.type.isPrimitive()) {
+                                        rhs = "<var>N</var>";
                                     } else
                                     if (
-                                        "short".equals(attribute.typeName)
-                                        || "int".equals(attribute.typeName)
-                                        || "long".equals(attribute.typeName)
-                                        || "float".equals(attribute.typeName)
-                                        || "double".equals(attribute.typeName)
+                                        "java.io.File".equals(qtn)
+                                        || "org.apache.tools.ant.types.Resource".equals(qtn)
+                                        || "org.apache.tools.ant.types.Path".equals(qtn)
+                                        || "java.lang.Class".equals(qtn)
+                                        || "java.lang.String".equals(qtn)
                                     ) {
-                                        rhs = "<var>N</var>";
-                                        if (attribute.defaultValue != null) {
-                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
-                                        }
-                                    } else
-                                    if ("char".equals(attribute.typeName)) {
-                                        rhs = "<var>character</var>";
-                                        if (attribute.defaultValue != null) {
-                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
-                                        }
-                                    } else
-                                    if ("String".equals(attribute.typeName)) {
-                                        rhs = "<var>string</var>";
-                                        if (attribute.defaultValue != null) {
-                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
-                                        }
+                                        rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.type.simpleTypeName()) + "</var>";
                                     } else
                                     {
-                                        rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.typeName) + "</var>";
-                                        if (attribute.defaultValue != null) {
-                                            rhs += "|<u>" + attribute.defaultValue + "</u>";
+                                        if (attribute.type instanceof ClassDoc) {
+                                            for (ConstructorDoc cd : ((ClassDoc) attribute.type).constructors()) {
+                                                if (cd.parameters().length == 1 && "String".equals(cd.parameters()[0].typeName())) {
+// TODO
+                                                }
+                                            }
                                         }
+                                        rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.type.simpleTypeName()) + "</var>";
                                     }
+
+                                    if (attribute.defaultValue != null) rhs += "|<u>" + attribute.defaultValue + "</u>";
+
                                     pw.println("      <dt>");
                                     pw.println("        <a name=\"" + attribute.name + "\" />");
                                     pw.println("        <code>" + attribute.name + "=\"" + rhs + "\"</code>");
@@ -409,8 +398,8 @@ class AntDoclet {
                                         pw.println("        <a name=\"" + subelement.name + "\" />");
                                         pw.println("        <code>&lt;" + subelement.name + "></code>");
                                     } else {
-                                        pw.println("        <a name=\"" + subelement.typeName + "\" />");
-                                        pw.println("        Any <code>" + subelement.typeName + "</code>");
+                                        pw.println("        <a name=\"" + subelement.type + "\" />");
+                                        pw.println("        Any <code>" + subelement.type + "</code>");
                                     }
                                     pw.println("      </dt>");
                                     pw.println("      <dd>");
@@ -514,14 +503,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return this.idx < nl.getLength(); }
+                    hasNext() { return idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
                         return result;
                     }
 
