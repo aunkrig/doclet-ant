@@ -53,6 +53,10 @@ import org.xml.sax.SAXException;
 
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.ConstructorDoc;
+import com.sun.javadoc.Doc;
+import com.sun.javadoc.DocErrorReporter;
+import com.sun.javadoc.FieldDoc;
+import com.sun.javadoc.LanguageVersion;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.RootDoc;
@@ -64,6 +68,7 @@ import de.unkrig.commons.doclet.Html;
 import de.unkrig.commons.doclet.Mediawiki;
 import de.unkrig.commons.file.FileUtil;
 import de.unkrig.commons.io.LineUtil;
+import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
@@ -80,21 +85,59 @@ import de.unkrig.commons.text.CamelCase;
 public final
 class AntDoclet {
 
+    static { AssertionUtil.enableAssertionsForThisClass(); }
+
     private static final Pattern SET_XYZ_METHOD_NAME    = Pattern.compile("set([A-Z]\\w*)");
     private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
     private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?([A-Z]\\w*)");
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
 
+    /**
+     * Regular expression for an HTML link.
+     * <dl>
+     *   <dd>$1: Text before the {@code href} attribute value, e.g. "{@code <a class='foo' href='}"
+     *   <dd>$2: Value of the {@code href} attribute, including quotes
+     *   <dd>$3: Text after the {@code href} attribute value, e.g. "{@code '>}"
+     *   <dd>$4: Body of the link element, e.g. "{@code here}"
+     *   <dd>$5: The closing tag, e.g. "{@code </a>}"
+     * </dl>
+     */
+    private static final Pattern
+    HTML_LINK = Pattern.compile(
+        "(<\\s*a\\b[^>]*\\bhref\\s*=\\s*[\"'])([^\"']*)([\"'][^>]*>)(.*?)(<\\s*/\\s*a\\s*>)",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    private static final
+    class AntTask {
+
+        final String   name;
+        final ClassDoc classDoc;
+
+        public AntTask(String name, ClassDoc classDoc) {
+            this.name     = name;
+            this.classDoc = classDoc;
+        }
+    }
+
     private static final
     class AntAttribute {
 
+        final MethodDoc        methodDoc;
         final String           name;
         final Type             type;
         final String           htmlText;
         @Nullable final String defaultValue;
 
         public
-        AntAttribute(String name, Type type, String htmlText, @Nullable String defaultValue) {
+        AntAttribute(
+            MethodDoc        methodDoc,
+            String           name,
+            Type             type,
+            String           htmlText,
+            @Nullable String defaultValue
+        ) {
+            this.methodDoc    = methodDoc;
             this.name         = name;
             this.type         = type;
             this.htmlText     = htmlText;
@@ -105,15 +148,17 @@ class AntDoclet {
     private static final
     class AntSubelement {
 
+        final MethodDoc        methodDoc;
         @Nullable final String name;
         final Type             type;
         final String           htmlText;
 
         public
-        AntSubelement(@Nullable String name, Type type, String htmlText) {
-            this.name     = name;
-            this.type     = type;
-            this.htmlText = htmlText;
+        AntSubelement(MethodDoc methodDoc, @Nullable String name, Type type, String htmlText) {
+            this.methodDoc = methodDoc;
+            this.name      = name;
+            this.type      = type;
+            this.htmlText  = htmlText;
         }
     }
 
@@ -121,6 +166,8 @@ class AntDoclet {
      * Doclets are never instantiated.
      */
     private AntDoclet() {}
+
+    public static LanguageVersion languageVersion() { return LanguageVersion.JAVA_1_5; }
 
     /**
      * See <a href="https://docs.oracle.com/javase/6/docs/technotes/guides/javadoc/doclet/overview.html">"Doclet
@@ -206,6 +253,7 @@ class AntDoclet {
 
         document.getDocumentElement().normalize();
 
+        final List<AntTask> tasks = new ArrayList<AntTask>();
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
 
             final String taskName = taskdefElement.getAttribute("name");
@@ -226,16 +274,23 @@ class AntDoclet {
                 continue;
             }
 
+            tasks.add(new AntTask(taskName, classDoc));
+        }
+
+        for (final AntTask task : tasks) {
+
             // Deduce attributes and subelements from the special methods that ANT uses.
             final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
             final List<AntSubelement> subelements = new ArrayList<AntSubelement>();
-            for (MethodDoc md : classDoc.methods()) {
+            for (MethodDoc md : task.classDoc.methods()) {
                 String      methodName       = md.name();
                 Parameter[] methodParameters = md.parameters();
 
                 try {
 
-                    String text = html.fromTags(md.inlineTags(), classDoc, rootDoc);
+                    // Get method description.
+                    String text = html.fromTags(md.inlineTags(), task.classDoc, rootDoc);
+
                     {
                         Tag[] seeTags = md.tags("@see");
                         if (seeTags.length > 0) {
@@ -273,7 +328,7 @@ class AntDoclet {
                             defaultValue = html.fromJavadocText(dvt[0].text(), md, rootDoc);
                         }
 
-                        attributes.add(new AntAttribute(name, type, text, defaultValue));
+                        attributes.add(new AntAttribute(md, name, type, text, defaultValue));
                     } else
                     if (
                         (m = AntDoclet.CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
@@ -282,7 +337,7 @@ class AntDoclet {
                         String name = CamelCase.toLowerCamelCase(m.group(1));
                         Type   type = md.returnType();
 
-                        subelements.add(new AntSubelement(name, type, text));
+                        subelements.add(new AntSubelement(md, name, type, text));
                     } else
                     if (
                         (m = AntDoclet.ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
@@ -291,7 +346,7 @@ class AntDoclet {
                         String name = CamelCase.toLowerCamelCase(m.group(1));
                         Type   type = methodParameters[0].type();
 
-                        subelements.add(new AntSubelement(name, type, text));
+                        subelements.add(new AntSubelement(md,name, type, text));
                     } else
                     if (
                         (m = AntDoclet.ADD_METHOD_NAME.matcher(methodName)).matches()
@@ -299,7 +354,7 @@ class AntDoclet {
                     ) {
                         Type type = methodParameters[0].type();
 
-                        subelements.add(new AntSubelement(null, type, text));
+                        subelements.add(new AntSubelement(md, null, type, text));
                     }
                 } catch (Longjump l) {}
             }
@@ -307,7 +362,7 @@ class AntDoclet {
             // Produce HTML output iff requested.
             if (htmlOutputDirectory != null) {
                 FileUtil.printToFile(
-                    new File(htmlOutputDirectory, "/tasks/" + taskName + ".html"),
+                    new File(htmlOutputDirectory, "/tasks/" + task.name + ".html"),
                     Charset.forName("ISO8859-1"),
                     new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
@@ -316,7 +371,7 @@ class AntDoclet {
 
                             String htmlText;
                             try {
-                                htmlText = html.fromTags(classDoc.inlineTags(), classDoc, rootDoc);
+                                htmlText = html.fromTags(task.classDoc.inlineTags(), task.classDoc, rootDoc);
                             } catch (Longjump e) {
                                 return;
                             }
@@ -324,11 +379,11 @@ class AntDoclet {
                             pw.println("<!DOCTYPE html>");
                             pw.println("  <html>");
                             pw.println("  <head>");
-                            pw.println("    <title>Task &lt;" + taskName + "&gt;</title>");
+                            pw.println("    <title>Task &lt;" + task.name + "&gt;</title>");
                             pw.println("  </head>");
                             pw.println();
                             pw.println("  <body>");
-                            pw.println("    <h1><code>&lt;" + taskName + "></code> Task</h1>");
+                            pw.println("    <h1><code>&lt;" + task.name + "></code> Task</h1>");
                             pw.println();
                             pw.write(htmlText);
 
@@ -343,16 +398,19 @@ class AntDoclet {
 
                                     // See http://ant.apache.org/manual/develop.html#set-magic
                                     String rhs;
+                                    String attributeTypeHtmlText = null;
+
                                     String qtn = attribute.type.qualifiedTypeName();
                                     if ("boolean".equals(qtn)) {
-                                        if (attribute.defaultValue != null) {
-                                            rhs = Boolean.toString(!Boolean.parseBoolean(attribute.defaultValue));
+                                        if (Boolean.parseBoolean(attribute.defaultValue)) {
+                                            rhs = "<u>true</u>|false";
                                         } else {
                                             rhs = "true|<u>false</u>";
                                         }
                                     } else
                                     if (attribute.type.isPrimitive()) {
                                         rhs = "<var>N</var>";
+                                        if (attribute.defaultValue != null) rhs += "|<u>" + attribute.defaultValue + "</u>";
                                     } else
                                     if (
                                         "java.io.File".equals(qtn)
@@ -362,26 +420,36 @@ class AntDoclet {
                                         || "java.lang.String".equals(qtn)
                                     ) {
                                         rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.type.simpleTypeName()) + "</var>";
+                                        if (attribute.defaultValue != null) rhs += "|<u>" + attribute.defaultValue + "</u>";
+                                    } else
+                                    if (attribute.type instanceof Doc && ((Doc) attribute.type).isEnum()) {
+                                        StringBuilder sb = new StringBuilder();
+                                        for (FieldDoc enumConstant : ((ClassDoc) attribute.type).enumConstants()) {
+                                            if (sb.length() > 0) sb.append('|');
+                                            boolean isDefault = enumConstant.name().equals(attribute.defaultValue);
+                                            if (isDefault) sb.append("<u>");
+                                            sb.append(enumConstant.name());
+                                            if (isDefault) sb.append("</u>");
+                                        }
+                                        rhs = sb.toString();
                                     } else
                                     {
-                                        if (attribute.type instanceof ClassDoc) {
-                                            for (ConstructorDoc cd : ((ClassDoc) attribute.type).constructors()) {
-                                                if (cd.parameters().length == 1 && "String".equals(cd.parameters()[0].typeName())) {
-// TODO
-                                                }
-                                            }
-                                        }
                                         rhs = "<var>" + CamelCase.toHyphenSeparated(attribute.type.simpleTypeName()) + "</var>";
+                                        try {
+                                            attributeTypeHtmlText = this.getSingleStringParameterConstructorHtmlText((ClassDoc) attribute.type, rootDoc);
+                                        } catch (Longjump e) {}
+                                        if (attribute.defaultValue != null) rhs += "|<u>" + attribute.defaultValue + "</u>";
                                     }
-
-                                    if (attribute.defaultValue != null) rhs += "|<u>" + attribute.defaultValue + "</u>";
 
                                     pw.println("      <dt>");
                                     pw.println("        <a name=\"" + attribute.name + "\" />");
                                     pw.println("        <code>" + attribute.name + "=\"" + rhs + "\"</code>");
                                     pw.println("      </dt>");
                                     pw.println("      <dd>");
-                                    pw.println("        " + attribute.htmlText.replaceAll("\\s+", " "));
+                                    pw.println("        " + this.cookLinks(attribute.htmlText.replaceAll("\\s+", " "), attribute.methodDoc));
+                                    if (attributeTypeHtmlText != null) {
+                                        pw.println("        " + this.cookLinks(attributeTypeHtmlText.replaceAll("\\s+", " "), attribute.methodDoc));
+                                    }
                                     pw.println("      </dd>");
                                 }
                                 pw.println("    </dl>");
@@ -411,6 +479,73 @@ class AntDoclet {
                             pw.println("  </body>");
                             pw.println("</html>");
                         }
+
+                        private String
+                        cookLinks(String html, Doc ref) {
+
+                            // Process all links in the HTML code.
+                            StringBuffer sb = new StringBuffer();
+                            Matcher m = HTML_LINK.matcher(html);
+                            while (m.find()) {
+                                String href = m.group(2);
+
+                                Doc doc;
+                                try {
+                                    doc = Docs.findDoc(href, rootDoc, ref);
+                                } catch (Longjump e) {
+                                    continue;
+                                }
+                                assert doc != null : href;
+
+                                REPLACE_HREF: {
+
+                                    // Link to attribute of same task?
+                                    for (AntAttribute attribute : attributes) {
+                                        if (doc == attribute.methodDoc) {
+                                            href = '#' + attribute.name;
+                                            break REPLACE_HREF;
+                                        }
+                                    }
+
+                                    // Link to subelement of same task?
+                                    for (AntSubelement subelement : subelements) {
+                                        if (doc == subelement.methodDoc) {
+                                            href = '#' + subelement.name;
+                                            break REPLACE_HREF;
+                                        }
+                                    }
+
+                                    // Link to other task?
+                                    for (AntTask task : tasks) {
+                                        if (doc == task.classDoc) {
+                                            href = task.name;
+                                            break REPLACE_HREF;
+                                        }
+                                    }
+
+                                    rootDoc.printError(ref.position(), "Cannot handle link to '" + doc + "'");
+                                }
+
+                                m.appendReplacement(sb, "$1" + href + "$3$4$5");
+                            }
+                            m.appendTail(sb);
+                            return sb.toString();
+                        }
+
+                        private String
+                        getSingleStringParameterConstructorHtmlText(ClassDoc classDoc, DocErrorReporter errorReporter) throws Longjump {
+                            for (ConstructorDoc cd : classDoc.constructors()) {
+                                if (cd.parameters().length == 1 && "String".equals(cd.parameters()[0].typeName())) {
+                                    try {
+                                        return html.fromTags(cd.inlineTags(), classDoc, rootDoc);
+                                    } catch (Longjump l) {
+                                        return "???";
+                                    }
+                                }
+                            }
+                            errorReporter.printError(classDoc.position(), "Class has no single-string-parameter constructor");
+                            throw new Longjump();
+                        }
                     }
                 );
             }
@@ -418,7 +553,7 @@ class AntDoclet {
             // Produce WIKIMEDIA markup output iff requested.
             if (mediawikiOutputDirectory != null) {
                 FileUtil.printToFile(
-                    new File(mediawikiOutputDirectory, "/tasks/" + taskName + ".mw"),
+                    new File(mediawikiOutputDirectory, "/tasks/" + task.name + ".mw"),
                     Charset.forName("ISO8859-1"),
                     new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
@@ -427,12 +562,12 @@ class AntDoclet {
 
                             String htmlText;
                             try {
-                                htmlText = html.fromTags(classDoc.inlineTags(), classDoc, rootDoc);
+                                htmlText = html.fromTags(task.classDoc.inlineTags(), task.classDoc, rootDoc);
                             } catch (Longjump e) {
                                 return;
                             }
 
-                            pw.println("<div style=\"font-size:16pt\"><code>'''<" + taskName + ">'''</code></div>");
+                            pw.println("<div style=\"font-size:16pt\"><code>'''<" + task.name + ">'''</code></div>");
                             pw.println();
                             String mediawiki = Mediawiki.fromHtml(htmlText);
                             pw.println(mediawiki);
@@ -446,9 +581,9 @@ class AntDoclet {
                                 for (AntAttribute attribute : attributes) {
                                     pw.println(
                                         ";<div id=\""
-                                        + attribute.name
+                                        + attribute.methodDoc
                                         + "\"></div><code>"
-                                        + attribute.name
+                                        + attribute.methodDoc
                                         + "=\"''text''\"</code>"
                                     );
                                     pw.println(':' + Mediawiki.fromHtml(attribute.htmlText.replaceAll("\\s+", " ")));
@@ -503,14 +638,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return idx < nl.getLength(); }
+                    hasNext() { return this.idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
                         return result;
                     }
 
