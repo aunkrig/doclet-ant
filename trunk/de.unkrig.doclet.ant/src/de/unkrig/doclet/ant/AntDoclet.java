@@ -285,7 +285,7 @@ class AntDoclet {
                             sb.append("<dl><dt>See also:</dt>");
                             for (Tag seeTag : seeTags) {
                                 sb.append("<dd><code>");
-                                sb.append(html.resolveTarget(seeTag.text(), null, md, rootDoc));
+                                sb.append(html.makeLink(md, seeTag.text(), null, rootDoc));
                                 sb.append("</code></dd>");
                             }
                             sb.append("</dl>");
