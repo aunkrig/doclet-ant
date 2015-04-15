@@ -34,10 +34,12 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -240,52 +242,12 @@ class AntDoclet {
             }
 
             // Deduce attributes and subelements from the special methods that ANT uses.
-            final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
-            final List<AntSubelement> subelements = new ArrayList<AntSubelement>();
-            for (MethodDoc md : classDoc.methods()) {
-
-                String      methodName       = md.name();
-                Parameter[] methodParameters = md.parameters();
-
-                Matcher m;
-                if (
-                    (m = AntDoclet.SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
-                    && methodParameters.length == 1
-                ) {
-                    String name = CamelCase.toLowerCamelCase(m.group(1));
-                    Type   type = methodParameters[0].type();
-
-                    attributes.add(new AntAttribute(name, md, type));
-                } else
-                if (
-                    (m = AntDoclet.CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
-                    && methodParameters.length == 0
-                ) {
-                    String name = CamelCase.toLowerCamelCase(m.group(1));
-                    Type   type = md.returnType();
-
-                    subelements.add(new AntSubelement(md, name, type));
-                } else
-                if (
-                    (m = AntDoclet.ADD_METHOD_NAME.matcher(methodName)).matches()
-                    && methodParameters.length == 1
-                ) {
-                    Type type = methodParameters[0].type();
-
-                    subelements.add(new AntSubelement(md, null, type));
-                } else
-                if (
-                    (m = AntDoclet.ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
-                    && methodParameters.length == 1
-                ) {
-                    String name = CamelCase.toLowerCamelCase(m.group(1));
-                    Type   type = methodParameters[0].type();
-
-                    subelements.add(new AntSubelement(md, name, type));
-                }
-            }
-
-            tasks.add(new AntTask(taskName, classDoc, attributes, subelements));
+            tasks.add(new AntTask(
+                taskName,
+                classDoc,
+                attributesOf(classDoc),
+                subelementsOf(classDoc)
+            ));
         }
 
         for (final AntTask task : tasks) {
@@ -307,7 +269,7 @@ class AntDoclet {
 
                     if (to instanceof MethodDoc) {
                         MethodDoc toMethod = (MethodDoc) to;
-                        ClassDoc  toClass = toMethod.containingClass();
+                        ClassDoc  toClass  = toMethod.containingClass();
                         for (AntTask t : tasks) {
 
                             if (t.classDoc != toClass) continue;
@@ -367,6 +329,8 @@ class AntDoclet {
             // Produce HTML output iff requested.
             if (htmlOutputDirectory != null) {
 
+                final Set<Type> seenSubelements = new HashSet<Type>();
+
                 FileUtil.printToFile(
                     new File(htmlOutputDirectory, "/tasks/" + task.name + ".html"),
                     Charset.forName("ISO8859-1"),
@@ -401,96 +365,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntAttribute attribute : task.attributes) {
-
-                                    String defaultValue;
-                                    {
-                                        Tag[] dvt = attribute.methodDoc.tags("@defaultValue");
-                                        if (dvt.length == 0) {
-                                            defaultValue = null;
-                                        } else {
-                                            if (dvt.length > 1) {
-                                                rootDoc.printWarning("Only one '@defaultValue' tag allowed");
-                                            }
-                                            try {
-                                                defaultValue = html.fromJavadocText(dvt[0].text(), attribute.methodDoc, rootDoc);
-                                            } catch (Longjump e) {
-                                                defaultValue = null;
-                                            }
-                                        }
-                                    }
-
-                                    // See http://ant.apache.org/manual/develop.html#set-magic
-                                    String rhs;
-                                    String attributeTypeHtmlText = null;
-
-                                    Type   attributeType = attribute.type;
-                                    String qualifiedAttributeTypeName = attributeType.qualifiedTypeName();
-                                    if ("boolean".equals(qualifiedAttributeTypeName)) {
-                                        if (Boolean.parseBoolean(defaultValue)) {
-                                            rhs = "<u>true</u>|false";
-                                        } else {
-                                            rhs = "true|<u>false</u>";
-                                        }
-                                    } else
-                                    if (attributeType.isPrimitive()) {
-                                        rhs = "<var>N</var>";
-                                        if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
-                                    } else
-                                    if (
-                                        "java.io.File".equals(qualifiedAttributeTypeName)
-                                        || "org.apache.tools.ant.types.Resource".equals(qualifiedAttributeTypeName)
-                                        || "org.apache.tools.ant.types.Path".equals(qualifiedAttributeTypeName)
-                                        || "java.lang.Class".equals(qualifiedAttributeTypeName)
-                                        || "java.lang.String".equals(qualifiedAttributeTypeName)
-                                    ) {
-                                        rhs = "<var>" + CamelCase.toHyphenSeparated(attributeType.simpleTypeName()) + "</var>";
-                                        if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
-                                    } else
-                                    if (attributeType instanceof Doc && ((Doc) attributeType).isEnum()) {
-                                        StringBuilder sb = new StringBuilder();
-                                        for (FieldDoc enumConstant : ((ClassDoc) attributeType).enumConstants()) {
-                                            if (sb.length() > 0) sb.append('|');
-                                            boolean isDefault = enumConstant.name().equals(defaultValue);
-                                            if (isDefault) sb.append("<u>");
-                                            sb.append(enumConstant.name());
-                                            if (isDefault) sb.append("</u>");
-                                        }
-                                        rhs = sb.toString();
-                                    } else
-                                    {
-                                        try {
-                                            rhs = (
-                                                "<var>"
-                                                + html.makeLink(
-                                                    attribute.methodDoc,
-                                                    this.getSingleStringParameterConstructor((ClassDoc) attributeType, rootDoc),
-                                                    CamelCase.toHyphenSeparated(attributeType.simpleTypeName()),
-                                                    rootDoc
-                                                )
-                                                + "</var>"
-                                            );
-                                        } catch (Longjump l) {
-                                            rhs = "<var>" + CamelCase.toHyphenSeparated(attributeType.simpleTypeName()) + "</var>";
-                                        }
-                                        if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
-                                    }
-
-                                    pw.println("      <dt>");
-                                    pw.println("        <a name=\"" + attribute.name + "\" />");
-                                    pw.println("        <code>" + attribute.name + "=\"" + rhs + "\"</code>");
-                                    pw.println("      </dt>");
-
-                                    // Generate attribute description.
-                                    try {
-                                        String attributeHtmlText = html.generateFor(attribute.methodDoc, attribute.methodDoc, rootDoc);
-
-                                        pw.println("      <dd>");
-                                        pw.println("        " + attributeHtmlText.replaceAll("\\s+", " "));
-                                        if (attributeTypeHtmlText != null) {
-                                            pw.println("        " + attributeTypeHtmlText.replaceAll("\\s+", " "));
-                                        }
-                                        pw.println("      </dd>");
-                                    } catch (Longjump l) {}
+                                    this.printAttribute(attribute, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -501,28 +376,181 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntSubelement subelement : task.subelements) {
-                                    pw.println("      <dt>");
-                                    if (subelement.name != null) {
-                                        pw.println("        <a name=\"" + subelement.name + "\" />");
-                                        pw.println("        <code>&lt;" + subelement.name + "></code>");
-                                    } else {
-                                        pw.println("        <a name=\"" + subelement.type.asClassDoc().qualifiedName() + "\" />");
-                                        pw.println("        Any <code>" + subelement.type.asClassDoc().qualifiedName() + "</code>");
-                                    }
-                                    pw.println("      </dt>");
-
-                                    // Generate subelement description.
-                                    try {
-                                        String subelementHtmlText = html.generateFor(subelement.methodDoc, subelement.methodDoc, rootDoc);
-                                        pw.println("      <dd>");
-                                        pw.println("        " + subelementHtmlText.replaceAll("\\s+", " "));
-                                        pw.println("      </dd>");
-                                    } catch (Longjump e) {}
+                                    this.printSubelement(subelement, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
                             pw.println("  </body>");
                             pw.println("</html>");
+                        }
+
+                        private void
+                        printAttribute(AntAttribute attribute, final Html html, final RootDoc rootDoc, PrintWriter pw) {
+
+                            String defaultValue;
+                            {
+                                Tag[] dvt = attribute.methodDoc.tags("@defaultValue");
+                                if (dvt.length == 0) {
+                                    defaultValue = null;
+                                } else {
+                                    if (dvt.length > 1) {
+                                        rootDoc.printWarning("Only one '@defaultValue' tag allowed");
+                                    }
+                                    try {
+                                        defaultValue = html.fromJavadocText(dvt[0].text(), attribute.methodDoc, rootDoc);
+                                    } catch (Longjump e) {
+                                        defaultValue = null;
+                                    }
+                                }
+                            }
+
+                            // See http://ant.apache.org/manual/develop.html#set-magic
+                            String rhs;
+
+                            Type   attributeType = attribute.type;
+                            String qualifiedAttributeTypeName = attributeType.qualifiedTypeName();
+                            if (
+                                "boolean".equals(qualifiedAttributeTypeName)
+                                || "java.lang.Boolean".equals(qualifiedAttributeTypeName)
+                            ) {
+                                if (Boolean.parseBoolean(defaultValue)) {
+                                    rhs = "<u>true</u>|false";
+                                } else {
+                                    rhs = "true|<u>false</u>";
+                                }
+                            } else
+                            if (
+                                attributeType.isPrimitive()
+                                || "java.lang.Byte".equals(qualifiedAttributeTypeName)
+                                || "java.lang.Short".equals(qualifiedAttributeTypeName)
+                                || "java.lang.Long".equals(qualifiedAttributeTypeName)
+                                || "java.lang.Float".equals(qualifiedAttributeTypeName)
+                                || "java.lang.Double".equals(qualifiedAttributeTypeName)
+                            ) {
+                                rhs = "<var>N</var>";
+                                if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
+                            } else
+                            if (
+                                "java.io.File".equals(qualifiedAttributeTypeName)
+                                || "org.apache.tools.ant.types.Resource".equals(qualifiedAttributeTypeName)
+                                || "org.apache.tools.ant.types.Path".equals(qualifiedAttributeTypeName)
+                                || "java.lang.Class".equals(qualifiedAttributeTypeName)
+                                || "java.lang.String".equals(qualifiedAttributeTypeName)
+                            ) {
+                                rhs = "<var>" + CamelCase.toHyphenSeparated(attributeType.simpleTypeName()) + "</var>";
+                                if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
+                            } else
+                            if (attributeType instanceof Doc && ((Doc) attributeType).isEnum()) {
+                                StringBuilder sb = new StringBuilder();
+                                for (FieldDoc enumConstant : ((ClassDoc) attributeType).enumConstants()) {
+                                    if (sb.length() > 0) sb.append('|');
+                                    boolean isDefault = enumConstant.name().equals(defaultValue);
+                                    if (isDefault) sb.append("<u>");
+                                    sb.append(enumConstant.name());
+                                    if (isDefault) sb.append("</u>");
+                                }
+                                rhs = sb.toString();
+                            } else
+                            {
+                                try {
+                                    rhs = (
+                                        "<var>"
+                                        + html.makeLink(
+                                            attribute.methodDoc,
+                                            this.getSingleStringParameterConstructor((ClassDoc) attributeType, rootDoc),
+                                            CamelCase.toHyphenSeparated(attributeType.simpleTypeName()),
+                                            rootDoc
+                                        )
+                                        + "</var>"
+                                    );
+                                } catch (Longjump l) {
+                                    rhs = "<var>" + CamelCase.toHyphenSeparated(attributeType.simpleTypeName()) + "</var>";
+                                }
+                                if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
+                            }
+
+                            pw.println("      <dt>");
+                            pw.println("        <a name=\"" + attribute.name + "\" />");
+                            pw.println("        <code>" + attribute.name + "=\"" + rhs + "\"</code>");
+                            pw.println("      </dt>");
+
+                            // Generate attribute description.
+                            try {
+                                String attributeHtmlText = html.generateFor(attribute.methodDoc, attribute.methodDoc, rootDoc);
+
+                                pw.println("      <dd>");
+                                pw.println("        " + attributeHtmlText.replaceAll("\\s+", " "));
+                                pw.println("      </dd>");
+                            } catch (Longjump l) {}
+                        }
+
+                        private void
+                        printSubelement(
+                            AntSubelement subelement,
+                            final Html    html,
+                            final RootDoc rootDoc,
+                            PrintWriter   pw
+                        ) {
+                            ClassDoc subelementTypeClassDoc = subelement.type.asClassDoc();
+
+                            pw.println("      <dt>");
+                            if (subelement.name != null) {
+                                pw.println("        <a name=\"" + subelement.name + "\" />");
+                                pw.println("        <code>&lt;" + subelement.name + "></code>");
+                            } else {
+                                pw.println("        <a name=\"" + subelementTypeClassDoc.qualifiedName() + "\" />");
+                                pw.println("        Any <code>" + subelementTypeClassDoc.qualifiedName() + "</code>");
+                            }
+                            pw.println("      </dt>");
+
+                            // Generate subelement description.
+                            try {
+                                String subelementHtmlText = html.generateFor(subelement.methodDoc, subelement.methodDoc, rootDoc);
+                                pw.println("      <dd>");
+                                pw.println("        " + subelementHtmlText.replaceAll("\\s+", " "));
+                                pw.println("      </dd>");
+                            } catch (Longjump e) {}
+
+                            // Generate subelement type description.
+                            if (subelementTypeClassDoc.isIncluded()) {
+                                try {
+                                    String subelementTypeHtmlText = html.fromTags(subelementTypeClassDoc.inlineTags(), subelementTypeClassDoc, rootDoc);
+                                    pw.println("      <dd>");
+                                    pw.println("        " + subelementTypeHtmlText.replaceAll("\\s+", " "));
+                                    pw.println("      </dd>");
+                                } catch (Longjump l) {}
+
+                                if (!seenSubelements.add(subelement.type)) {
+                                    pw.println("      <dd>(Attributes and subelements as described above)</dd>");
+                                    return;
+                                }
+
+                                // Subelement's attributes' descriptions.
+                                List<AntAttribute> subelementAttributes = attributesOf(subelement.type.asClassDoc());
+                                if (!subelementAttributes.isEmpty()) {
+                                    pw.println("<dd>Attributes:</dd>");
+                                    pw.println("<dd>");
+                                    pw.println("  <dl>");
+                                    for (AntAttribute subelementAttribute : subelementAttributes) {
+                                        this.printAttribute(subelementAttribute, html, rootDoc, pw);
+                                    }
+                                    pw.println("  </dl>");
+                                    pw.println("</dd>");
+                                }
+
+                                // Subelement's subelements' descriptions.
+                                List<AntSubelement> subelementSubelements = subelementsOf(subelement.type.asClassDoc());
+                                if (!subelementSubelements.isEmpty()) {
+                                    pw.println("<dd>Subelements:</dd>");
+                                    pw.println("<dd>");
+                                    pw.println("  <dl>");
+                                    for (AntSubelement subelementSubelement : subelementSubelements) {
+                                        this.printSubelement(subelementSubelement, html, rootDoc, pw);
+                                    }
+                                    pw.println("  </dl>");
+                                    pw.println("</dd>");
+                                }
+                            }
                         }
 
                         private ConstructorDoc
@@ -617,6 +645,66 @@ class AntDoclet {
         }
 
         return true;
+    }
+
+    private static List<AntSubelement> subelementsOf(final ClassDoc classDoc) {
+        final List<AntSubelement> subelements = new ArrayList<AntSubelement>();
+        for (MethodDoc md : classDoc.methods()) {
+
+            String      methodName       = md.name();
+            Parameter[] methodParameters = md.parameters();
+
+            Matcher m;
+
+            if (
+                (m = AntDoclet.CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                && methodParameters.length == 0
+            ) {
+                String name = CamelCase.toLowerCamelCase(m.group(1));
+                Type   type = md.returnType();
+
+                subelements.add(new AntSubelement(md, name, type));
+            } else
+            if (
+                (m = AntDoclet.ADD_METHOD_NAME.matcher(methodName)).matches()
+                && methodParameters.length == 1
+            ) {
+                Type type = methodParameters[0].type();
+
+                subelements.add(new AntSubelement(md, null, type));
+            } else
+            if (
+                (m = AntDoclet.ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                && methodParameters.length == 1
+            ) {
+                String name = CamelCase.toLowerCamelCase(m.group(1));
+                Type   type = methodParameters[0].type();
+
+                subelements.add(new AntSubelement(md, name, type));
+            }
+        }
+        return subelements;
+    }
+
+    private static List<AntAttribute> attributesOf(final ClassDoc classDoc) {
+        final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
+        for (MethodDoc md : classDoc.methods()) {
+
+            String      methodName       = md.name();
+            Parameter[] methodParameters = md.parameters();
+
+            Matcher m;
+            if (
+                (m = AntDoclet.SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                && methodParameters.length == 1
+            ) {
+                String name = CamelCase.toLowerCamelCase(m.group(1));
+                Type   type = methodParameters[0].type();
+
+                attributes.add(new AntAttribute(name, md, type));
+            }
+        }
+        return attributes;
     }
 
     private static void readExternalJavadocs(URL targetUrl, URL packageListUrl,
