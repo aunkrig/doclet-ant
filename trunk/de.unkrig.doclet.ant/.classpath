@@ -3,7 +3,11 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/de.unkrig.commons.doclet"/>
-	<classpathentry kind="var" path="JDK_1.6/lib/tools.jar"/>
+	<classpathentry kind="var" path="JDK_1.6/lib/tools.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="https://docs.oracle.com/javase/8/docs/jdk/api/javadoc/doclet/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry combineaccessrules="false" kind="src" path="/de.unkrig.commons.lang"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/de.unkrig.commons.nullanalysis"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/de.unkrig.commons.file"/>
