@@ -209,17 +209,12 @@ class AntDoclet {
                 destination = new File(option[1]);
             } else
             if ("-link".equals(option[0])) {
-                URL targetUrl = new URL(option[1]);
-                AntDoclet.readExternalJavadocs(
-                    targetUrl,
-                    new URL(targetUrl, "package-list"),
-                    externalJavadocs,
-                    rootDoc
-                );
+                URL targetUrl = new URL(option[1] + '/');
+                AntDoclet.readExternalJavadocs(targetUrl, targetUrl, externalJavadocs, rootDoc);
             } else
             if ("-linkoffline".equals(option[0])) {
-                URL targetUrl      = new URL(option[1]);
-                URL packageListUrl = new URL(option[2]);
+                URL targetUrl      = new URL(option[1] + '/');
+                URL packageListUrl = new URL(option[2] + '/');
 
                 AntDoclet.readExternalJavadocs(targetUrl, packageListUrl, externalJavadocs, rootDoc);
             } else
@@ -378,6 +373,12 @@ class AntDoclet {
 
             final Html          html      = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
             final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
+
+            if (!destination.isDirectory()) {
+                if (!destination.mkdirs()) {
+                    throw new IOException("Cannot create destination directory \"" + destination + "\"");
+                }
+            }
 
             IoUtil.copy(
                 AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/stylesheet.css"),
@@ -739,6 +740,10 @@ class AntDoclet {
             rootDoc.printWarning("<scriptdef>s are not yet supported");
         }
 
+        if (document.getElementsByTagName("componentdef").getLength() > 0) {
+            rootDoc.printWarning("<componentdef>s are not yet supported");
+        }
+
         return true;
     }
 
@@ -829,7 +834,8 @@ class AntDoclet {
     }
 
     /**
-     * Reads package names from the {@code packageListUrl} and puts them into the {@code externalJavadocs} map.
+     * Reads package names from "<var>packageListUrl</var>/package-list" and puts them into the {@code
+     * externalJavadocs} map.
      */
     private static void
     readExternalJavadocs(
@@ -839,7 +845,10 @@ class AntDoclet {
         RootDoc          rootDoc
     ) throws IOException {
 
-        List<String> packageNames = LineUtil.readAllLines(new InputStreamReader(packageListUrl.openStream()), true);
+        List<String> packageNames = LineUtil.readAllLines(
+            new InputStreamReader(new URL(packageListUrl, "package-list").openStream()),
+            true                                                                         // closeReader
+        );
 
         for (String packageName : packageNames) {
             URL prev = externalJavadocs.put(packageName, targetUrl);
