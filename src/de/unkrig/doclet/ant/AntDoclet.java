@@ -236,33 +236,9 @@ class AntDoclet {
         // https://ant.apache.org/manual/Types/antlib.html
         final List<AntTask> tasks = new ArrayList<AntTask>();
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
-
-            final String taskName = taskdefElement.getAttribute("name");
-            if (taskName == null) {
-                rootDoc.printError(antlibFile + ": Taskdef '" + taskdefElement + "' lacks the name");
-                continue;
-            }
-
-            String taskClassname = taskdefElement.getAttribute("classname");
-            if (taskClassname == null) {
-                rootDoc.printError(antlibFile + ": Taskdef '" + taskdefElement + "' lacks the class name");
-                continue;
-            }
-
-            final ClassDoc classDoc = Docs.findClass(rootDoc, taskClassname);
-            if (classDoc == null) {
-                rootDoc.printError("Class '" + taskClassname + "' not found for ANT task '" + taskName + "'");
-                continue;
-            }
-
-            // Deduce attributes and subelements from the special methods that ANT uses.
-            tasks.add(new AntTask(
-                taskName,
-                classDoc,
-                AntDoclet.characterDataOf(classDoc),
-                AntDoclet.attributesOf(classDoc),
-                AntDoclet.subelementsOf(classDoc)
-            ));
+            try {
+                tasks.add(AntDoclet.parseTaskdef(taskdefElement, rootDoc));
+            } catch (Longjump l) {}
         }
 
         if (document.getElementsByTagName("typedef").getLength() > 0) {
@@ -745,6 +721,37 @@ class AntDoclet {
         }
 
         return true;
+    }
+
+    private static AntTask
+    parseTaskdef(Element taskdefElement, RootDoc rootDoc) throws Longjump {
+
+        final String taskName = taskdefElement.getAttribute("name");
+        if (taskName == null) {
+            rootDoc.printError("<taskdef> lacks the name");
+            throw new Longjump();
+        }
+
+        String taskClassname = taskdefElement.getAttribute("classname");
+        if (taskClassname == null) {
+            rootDoc.printError("<taskdef> lacks the class name");
+            throw new Longjump();
+        }
+
+        final ClassDoc classDoc = Docs.findClass(rootDoc, taskClassname);
+        if (classDoc == null) {
+            rootDoc.printError("Class '" + taskClassname + "' not found for <anttask> '" + taskName + "'");
+            throw new Longjump();
+        }
+
+        // Deduce attributes and subelements from the special methods that ANT uses.
+        return new AntTask(
+            taskName,
+            classDoc,
+            AntDoclet.characterDataOf(classDoc),
+            AntDoclet.attributesOf(classDoc),
+            AntDoclet.subelementsOf(classDoc)
+        );
     }
 
     /**
