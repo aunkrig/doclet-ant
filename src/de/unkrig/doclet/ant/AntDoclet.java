@@ -265,6 +265,26 @@ class AntDoclet {
             ));
         }
 
+        if (document.getElementsByTagName("typedef").getLength() > 0) {
+            rootDoc.printWarning("<typedef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("macrodef").getLength() > 0) {
+            rootDoc.printWarning("<macrodef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("presetdef").getLength() > 0) {
+            rootDoc.printWarning("<presetdef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+            rootDoc.printWarning("<scriptdef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("componentdef").getLength() > 0) {
+            rootDoc.printWarning("<componentdef>s are not yet supported");
+        }
+
         for (final AntTask task : tasks) {
 
             // Because the HTML page hierarchy and the fragment identifier names are different from the standard
@@ -722,26 +742,6 @@ class AntDoclet {
                     }
                 }
             );
-        }
-
-        if (document.getElementsByTagName("typedef").getLength() > 0) {
-            rootDoc.printWarning("<typedef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("macrodef").getLength() > 0) {
-            rootDoc.printWarning("<macrodef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("presetdef").getLength() > 0) {
-            rootDoc.printWarning("<presetdef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-            rootDoc.printWarning("<scriptdef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("componentdef").getLength() > 0) {
-            rootDoc.printWarning("<componentdef>s are not yet supported");
         }
 
         return true;
