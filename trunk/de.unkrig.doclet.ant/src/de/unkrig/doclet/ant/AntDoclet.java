@@ -684,11 +684,11 @@ class AntDoclet {
                     private String
                     defaultValueHtmlText(MethodDoc characterData, final Html html, final RootDoc rootDoc) {
 
-                        Tag[] defaultValueTag = characterData.tags("@defaultValue");
+                        Tag[] defaultValueTag = characterData.tags("@de.unkrig.doclet.ant.defaultValue");
                         if (defaultValueTag.length == 0) return null;
 
                         if (defaultValueTag.length > 1) {
-                            rootDoc.printWarning("Only one '@defaultValue' tag allowed");
+                            rootDoc.printWarning("Only one '@de.unkrig.doclet.ant.defaultValue' tag allowed");
                         }
 
                         try {
