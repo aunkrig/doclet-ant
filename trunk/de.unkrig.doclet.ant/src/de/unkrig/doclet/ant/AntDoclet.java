@@ -159,7 +159,8 @@ class AntDoclet {
         final List<AntSubelement>  subelements;
 
         /**
-         * @param adaptTo TODO
+         * @param adaptTo       The value of the "{@code adaptTo="..."}" attribute, see <a
+         *                      href="http://ant.apache.org/manual/Tasks/typedef.html">here</a>
          * @param characterData The {@link MethodDoc} of the (optional) "{@code addText(String)}" method that ANT
          *                      invokes for text nested between the start end end tags
          */
