@@ -27,9 +27,11 @@
 package de.unkrig.doclet.ant;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.MessageFormat;
@@ -77,6 +79,7 @@ import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
+import de.unkrig.commons.text.pattern.PatternUtil;
 import de.unkrig.commons.util.collections.IterableUtil;
 
 /**
@@ -98,6 +101,10 @@ import de.unkrig.commons.util.collections.IterableUtil;
  *   <dt>{@code -link <var>target-url</var></dt>
  *   <dt>{@code -linkoffline} <var>target-url</var> <var>package-list-url</var></dt>
  *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.</dd>
+ *   <dt>{@code -doctitle} <var>text</var></dt>
+ *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.</dd>
+ *   <dt>{@code -windowtitle} <var>text</var></dt>
+ *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
  * </dl>
  */
 public final
@@ -222,6 +229,8 @@ class AntDoclet {
         if ("-d".equals(option)) return 2;
         if ("-link".equals(option)) return 2;
         if ("-linkoffline".equals(option)) return 3;
+        if ("-doctitle".equals(option)) return 2;
+        if ("-windowtitle".equals(option)) return 2;
 
         return 0;
     }
@@ -236,6 +245,8 @@ class AntDoclet {
         File                                              antlibFile       = new File("antlib.xml");
         File                                              destination      = new File(".");
         final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<String, URL>();
+        String                                            docTitle         = null;
+        String                                            windowTitle      = "Generated Documentation (Untitled)";
 
         for (String[] option : rootDoc.options()) {
             if ("-antlib-file".equals(option[0])) {
@@ -253,6 +264,12 @@ class AntDoclet {
                 URL packageListUrl = new URL(option[2] + '/');
 
                 AntDoclet.readExternalJavadocs(targetUrl, packageListUrl, externalJavadocs, rootDoc);
+            } else
+            if ("-doctitle".equals(option[0])) {
+                docTitle = option[1];
+            } else
+            if ("-windowtitle".equals(option[0])) {
+                windowTitle = option[1];
             } else
             {
 
@@ -274,12 +291,24 @@ class AntDoclet {
             new File(destination, "stylesheet.css"),
             false // append
         );
-        IoUtil.copy(
-            AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/templates/index.html"),
-            true, // closeInputStream
-            new File(destination, "index.html"),
-            false // append
-        );
+
+        {
+            String resourceName = "de/unkrig/doclet/ant/templates/index.html";
+
+            Reader in = new InputStreamReader(AntDoclet.class.getClassLoader().getResourceAsStream(resourceName));
+            try {
+                FileWriter out = new FileWriter(new File(destination, "index.html"));
+                try {
+                    PatternUtil.replaceAll(resourceName, in, Pattern.compile("@WINDOW_TITLE@"), windowTitle, out);
+                    out.close();
+                } finally {
+                    try { out.close(); } catch (Exception e) {}
+                }
+                in.close();
+            } finally {
+                try { in.close(); } catch (Exception e) {}
+            }
+        }
 
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
@@ -420,7 +449,7 @@ class AntDoclet {
                             MethodDoc characterData = antType.characterData;
                             if (characterData != null) {
                                 pw.println();
-                                pw.println("    <h2>Text between start and end tag</h2>");
+                                pw.println("    <h3>Text between start and end tag</h3>");
                                 pw.println();
                                 pw.println("    <dl>");
                                 this.printCharacterData(characterData, html, rootDoc, pw);
@@ -429,7 +458,7 @@ class AntDoclet {
 
                             if (!antType.attributes.isEmpty()) {
                                 pw.println();
-                                pw.println("    <h2>Attributes</h2>");
+                                pw.println("    <h3>Attributes</h3>");
                                 pw.println();
                                 pw.println("    <p>Default values are <u>underlined</u>.</p>");
                                 pw.println();
@@ -442,7 +471,7 @@ class AntDoclet {
 
                             if (!antType.subelements.isEmpty()) {
                                 pw.println();
-                                pw.println("    <h2>Subelements</h2>");
+                                pw.println("    <h3>Subelements</h3>");
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntSubelement subelement : antType.subelements) {
@@ -785,6 +814,7 @@ class AntDoclet {
 
         // Generate the document that is initially loaded into the "right frame" and displays all type summaries
         // (type name and first sentence of description).
+        final String docTitle2 = docTitle;
         FileUtil.printToFile(
             new File(destination, "overview-summary.html"),
             Charset.forName("ISO8859-1"),
@@ -805,11 +835,16 @@ class AntDoclet {
                     pw.println("    <p>OVERVIEW DEFINITION</p>");
                     pw.println();
 
+                    if (docTitle2 != null) {
+                        pw.println("<h1>" + docTitle2 + "</h1>");
+                        pw.println();
+                    }
+
                     for (AntTypeGroup typeGroup : antTypeGroups) {
 
                         if (typeGroup.types.isEmpty()) continue;
 
-                        pw.println("    <h1>" + typeGroup.typeGroupHeading + " summary</h1>");
+                        pw.println("    <h2>" + typeGroup.typeGroupHeading + " summary</h2>");
                         pw.println("    <dl>");
                         for (final AntType antType : typeGroup.types) {
                             try {
