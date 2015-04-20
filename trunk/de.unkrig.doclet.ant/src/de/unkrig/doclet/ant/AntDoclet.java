@@ -37,10 +37,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -116,15 +114,30 @@ class AntDoclet {
     private static final
     class AntTypeGroup {
 
+        final String        name;
         final List<AntType> types;
-        final String        heading;
+        final String        typeGroupHeading;
+        final MessageFormat typeTitleMf;
         final MessageFormat typeHeadingMf;
 
+        /**
+         * @param tGH           May contain inline tags
+         * @param typeTitleMf   Must not contain any inline tags; "<code>{0}</code>" maps to the type name
+         * @param typeHeadingMf May contain inline tags; "<code>{0}</code>" maps to the type name
+         */
         public
-        AntTypeGroup(List<AntType> types, String heading, String typeHeadingMf) {
-            this.types         = types;
-            this.heading       = heading;
-            this.typeHeadingMf = new MessageFormat(typeHeadingMf);
+        AntTypeGroup(
+            String        name,
+            List<AntType> types,
+            String        typeGroupHeading,
+            String        typeTitleMf,
+            String        typeHeadingMf
+        ) {
+            this.name             = name;
+            this.types            = types;
+            this.typeGroupHeading = typeGroupHeading;
+            this.typeTitleMf      = new MessageFormat(typeTitleMf);
+            this.typeHeadingMf    = new MessageFormat(typeHeadingMf);
         }
     }
 
@@ -256,9 +269,15 @@ class AntDoclet {
         }
 
         IoUtil.copy(
-            AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/stylesheet.css"),
+            AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/templates/stylesheet.css"),
             true, // closeInputStream
             new File(destination, "stylesheet.css"),
+            false // append
+        );
+        IoUtil.copy(
+            AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/templates/index.html"),
+            true, // closeInputStream
+            new File(destination, "index.html"),
             false // append
         );
 
@@ -310,193 +329,101 @@ class AntDoclet {
             }
         }
 
-        final Map<String /*name*/, AntTypeGroup> antTypeGroups = new LinkedHashMap<String, AntTypeGroup>();
-        antTypeGroups.put(
+        final List<AntTypeGroup> antTypeGroups = new ArrayList<AntTypeGroup>();
+        antTypeGroups.add(new AntTypeGroup(
             "tasks",
-            new AntTypeGroup(tasks, "Tasks", "Task \"<{0}>\"")
-        );
-        antTypeGroups.put(
+            tasks,
+            "Tasks",
+            "Task \"&lt;{0}&gt;\"",
+            "Task \"<code>&lt;{0}&gt;</code>\""
+        ));
+        antTypeGroups.add(new AntTypeGroup(
             "resourceCollections",
-            new AntTypeGroup(resourceCollections, "Resource collections", "Resource collection <{0}>")
-        );
-        antTypeGroups.put(
+            resourceCollections,
+            "Resource collections",
+            "Resource collection \"&lt;{0}&gt;\"",
+            "Resource collection \"<code>&lt;{0}&gt;</code>\""
+        ));
+        antTypeGroups.add(new AntTypeGroup(
             "chainableReaders",
-            new AntTypeGroup(chainableReaders, "Chainable readers", "Chainable reader \"<{0}>\"")
-        );
-        antTypeGroups.put(
+            chainableReaders,
+            "Chainable readers",
+            "Chainable reader \"&lt;{0}&gt;\"",
+            "Chainable reader \"<code>&lt;{0}&gt;</code>\""
+        ));
+        antTypeGroups.add(new AntTypeGroup(
             "conditions",
-            new AntTypeGroup(conditions, "Conditions", "Condition {0}")
-        );
-        antTypeGroups.put(
+            conditions,
+            "Conditions",
+            "Condition \"&lt;{0}&gt;\"",
+            "Condition \"<code>&lt;{0}&gt;</code>\""
+        ));
+        antTypeGroups.add(new AntTypeGroup(
             "otherTypes",
-            new AntTypeGroup(otherTypes, "Other types", "Type {0}")
-        );
+            otherTypes,
+            "Other types",
+            "Type \"&lt;{0}&gt;\"",
+            "Type \"<code>&lt;{0}&gt;</code>\""
+        ));
 
-        for (Entry<String, AntTypeGroup> e : antTypeGroups.entrySet()) {
-            String             typeGroupName = e.getKey();
-            final AntTypeGroup typeGroup     = e.getValue();
+        for (final AntTypeGroup typeGroup : antTypeGroups) {
 
             for (final AntType antType : typeGroup.types) {
 
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
-                final LinkMaker linkMaker = new LinkMaker() {
-
-                    @Override public String
-                    makeHref(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
-
-                        // Link to an ANT type?
-                        if (to instanceof ClassDoc) {
-                            ClassDoc toClass = (ClassDoc) to;
-                            for (Entry<String, AntTypeGroup> e2 : antTypeGroups.entrySet()) {
-                                String       tgn = e2.getKey();
-                                AntTypeGroup tg  = e2.getValue();
-                                for (AntType t : tg.types) {
-                                    if (toClass == t.classDoc) {
-                                        String href = t.name + ".html";
-                                        return tg == typeGroup ? href : "../" + tgn + '/' + href;
-                                    }
-                                }
-                            }
-
-                            rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
-                            throw new Longjump();
-                        }
-
-                        if (to instanceof MethodDoc) {
-                            MethodDoc toMethod = (MethodDoc) to;
-                            ClassDoc  toClass  = toMethod.containingClass();
-                            for (Entry<String, AntTypeGroup> e2 : antTypeGroups.entrySet()) {
-                                String       tgn = e2.getKey();
-                                AntTypeGroup tg  = e2.getValue();
-                                for (AntType t : tg.types) {
-                                    if (t.classDoc != toClass) continue;
-
-                                    // Link to an attribute (of the same or a different ANT type)?
-                                    for (AntAttribute a : t.attributes) {
-                                        if (a.methodDoc == toMethod) {
-                                            return (
-                                                toMethod.containingClass() == antType.classDoc ? '#' + a.name :
-                                                typeGroup == tg ? antType.name + '#' + a.name :
-                                                "../" + tgn + '/' + antType.name + '#' + a.name
-                                            );
-                                        }
-                                    }
-
-                                    // Link to a subelement (of the same or a different ANT type)?
-                                    for (AntSubelement s : t.subelements) {
-                                        if (s.methodDoc == toMethod) {
-                                            String fragment = (
-                                                "#<"
-                                                + (s.name != null ? s.name : s.type.asClassDoc().qualifiedName())
-                                                + '>'
-                                            );
-                                            return (
-                                                toMethod.containingClass() == antType.classDoc ? fragment :
-                                                typeGroup == tg ? antType.name + fragment :
-                                                "../" + tgn + '/' + antType.name + fragment
-                                            );
-                                        }
-                                    }
-
-                                    rootDoc.printError(from.position(), (
-                                        "'"
-                                        + to
-                                        + "' does not designate an attribute or subelement of type '<"
-                                        + t.name
-                                        + ">'"
-                                    ));
-                                }
-                                throw new Longjump();
-                            }
-
-                            rootDoc.printError(
-                                from.position(),
-                                "Linking from '" + from + "' to '" + to + "': " + toClass + "' is not an ANT type"
-                            );
-                            throw new Longjump();
-                        }
-
-                        rootDoc.printError(
-                            from.position(),
-                            "'" + to + "' does not designate a type, attribute or subelement"
-                        );
-                        throw new Longjump();
-                    }
-
-                    @Override public String
-                    makeDefaultLabel(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
-
-                        if (to instanceof ClassDoc) {
-                            ClassDoc toClass = (ClassDoc) to;
-                            for (AntTypeGroup atg : antTypeGroups.values()) {
-                                for (AntType t : atg.types) {
-                                    if (toClass == t.classDoc) return "&lt;" + t.name + "&gt;";
-                                }
-                            }
-                        }
-
-                        if (to instanceof MethodDoc) {
-                            MethodDoc toMethod = (MethodDoc) to;
-                            for (AntTypeGroup atg : antTypeGroups.values()) {
-                                for (AntType t : atg.types) {
-                                    for (AntAttribute a : t.attributes) {
-                                        if (a.methodDoc == toMethod) return a.name + "=\"...\"";
-                                    }
-                                    for (AntSubelement s : t.subelements) {
-                                        if (s.methodDoc == toMethod) return "&lt;" + s.name + "&gt;";
-                                    }
-                                }
-                            }
-                        }
-
-                        rootDoc.printError(
-                            from.position(),
-                            "'" + to + "' does not designate a task, attribute or subelement"
-                        );
-                        throw new Longjump();
-                    }
-                };
+                final LinkMaker linkMaker = linkMaker(antType, typeGroup, antTypeGroups, rootDoc);
 
                 final Html html = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
 
                 final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
 
                 FileUtil.printToFile(
-                    new File(destination, typeGroupName + '/' + antType.name + ".html"),
+                    new File(destination, typeGroup.name + '/' + antType.name + ".html"),
                     Charset.forName("ISO8859-1"),
                     new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
                         @Override public void
                         consume(PrintWriter pw) {
 
-                            String htmlText;
-                            try {
-                                htmlText = html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc);
-                            } catch (Longjump e) {
-                                return;
-                            }
+                            String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
+                            String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
 
                             pw.println("<!DOCTYPE html>");
                             pw.println("  <html lang=\"en\">");
                             pw.println("  <head>");
                             pw.println("    <!-- Generated by the ant doclet; see http://doclet.unkrig.de/ -->");
-                            pw.println("    <title>" + Html.escapeSgmlEntities(typeGroup.typeHeadingMf.format(new String[] { antType.name })) + "</title>");
+                            pw.println("    <title>" + typeTitle + "</title>");
                             pw.println("    <meta name=\"keywords\" content=\"" + antType.name + "\">");
                             pw.println("    <link rel=\"stylesheet\" type=\"text/css\" href=\"../stylesheet.css\">");
                             pw.println("  </head>");
                             pw.println();
                             pw.println("  <body>");
-                            pw.println("    <h1>" + Html.escapeSgmlEntities(typeGroup.typeHeadingMf.format(new String[] { antType.name })) + "</h1>");
+                            pw.println("    <p><a href=\"../overview-summary.html\">OVERVIEW</a> DEFINITION</p>");
+                            pw.println("    <h1>" + typeHeading + "</h1>");
                             pw.println();
-                            pw.write(htmlText);
 
-                            if (antType.characterData != null) {
+                            try {
+                                this.printType(antType, html, rootDoc, pw);
+                            } catch (Longjump l) {}
+
+                            pw.println("  </body>");
+                            pw.println("</html>");
+                        }
+
+                        private void
+                        printType(final AntType antType, final Html html, final RootDoc rootDoc, PrintWriter pw)
+                        throws Longjump {
+
+                            pw.write(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
+
+                            MethodDoc characterData = antType.characterData;
+                            if (characterData != null) {
                                 pw.println();
                                 pw.println("    <h2>Text between start and end tag</h2>");
                                 pw.println();
                                 pw.println("    <dl>");
-                                this.printCharacterData(antType.characterData, html, rootDoc, pw);
+                                this.printCharacterData(characterData, html, rootDoc, pw);
                                 pw.println("    </dl>");
                             }
 
@@ -523,9 +450,6 @@ class AntDoclet {
                                 }
                                 pw.println("    </dl>");
                             }
-
-                            pw.println("  </body>");
-                            pw.println("</html>");
                         }
 
                         /**
@@ -618,7 +542,7 @@ class AntDoclet {
                                                 rootDoc
                                             ),
                                             CamelCase.toHyphenSeparated(attributeType.simpleTypeName()),
-                                            rootDoc
+                                            null, rootDoc
                                         )
                                         + "</var>"
                                     );
@@ -667,7 +591,7 @@ class AntDoclet {
                                 try {
                                     pw.println(
                                         "        Any <code>"
-                                        + html.makeLink(antType.classDoc, subelementTypeClassDoc, null, rootDoc)
+                                        + html.makeLink(antType.classDoc, subelementTypeClassDoc, null, null, rootDoc)
                                         + "</code>"
                                     );
                                 } catch (Longjump l) {
@@ -758,7 +682,7 @@ class AntDoclet {
                             }
                         }
 
-                        private String
+                        @Nullable private String
                         defaultValueHtmlText(MethodDoc characterData, final Html html, final RootDoc rootDoc) {
 
                             Tag[] defaultValueTag = characterData.tags("@de.unkrig.doclet.ant.defaultValue");
@@ -813,7 +737,232 @@ class AntDoclet {
             rootDoc.printWarning("<scriptdef>s are not yet supported");
         }
 
+        final LinkMaker linkMaker = linkMaker(null, null, antTypeGroups, rootDoc);
+
+        final Html html = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
+
+        // Generate the document that is loaded into the "left frame" and displays all types in groups.
+        FileUtil.printToFile(
+            new File(destination, "alldefinitions-frame.html"),
+            Charset.forName("ISO8859-1"),
+            new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
+
+                @Override public void
+                consume(PrintWriter pw) {
+
+                    pw.println("<!DOCTYPE html>");
+                    pw.println("  <html lang=\"en\">");
+                    pw.println("  <head>");
+                    pw.println("    <!-- Generated by the ant doclet; see http://doclet.unkrig.de/ -->");
+                    pw.println("    <title>All definitions</title>");
+                    pw.println("    <link rel=\"stylesheet\" type=\"text/css\" href=\"stylesheet.css\">");
+                    pw.println("  </head>");
+                    pw.println();
+                    pw.println("  <body>");
+                    pw.println("    <dl>");
+                    pw.println();
+                    for (AntTypeGroup typeGroup : antTypeGroups) {
+
+                        if (typeGroup.types.isEmpty()) continue;
+
+                        pw.println("      <dt>" + typeGroup.typeGroupHeading + "</dt>");
+                        for (final AntType antType : typeGroup.types) {
+                            try {
+                                pw.println((
+                                    "      <dd><code>"
+                                    + html.makeLink(rootDoc, antType.classDoc, null, "definitionFrame", rootDoc)
+                                    + "</code></dd>"
+                                ));
+                            } catch (Longjump l) {}
+                        }
+                    }
+                    pw.println("    </dl>");
+                    pw.println("  </body>");
+                    pw.println("</html>");
+                }
+            }
+        );
+
+        // Generate the document that is initially loaded into the "right frame" and displays all type summaries
+        // (type name and first sentence of description).
+        FileUtil.printToFile(
+            new File(destination, "overview-summary.html"),
+            Charset.forName("ISO8859-1"),
+            new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
+
+                @Override public void
+                consume(PrintWriter pw) {
+
+                    pw.println("<!DOCTYPE html>");
+                    pw.println("  <html lang=\"en\">");
+                    pw.println("  <head>");
+                    pw.println("    <!-- Generated by the ant doclet; see http://doclet.unkrig.de/ -->");
+                    pw.println("    <title>All definitions</title>");
+                    pw.println("    <link rel=\"stylesheet\" type=\"text/css\" href=\"stylesheet.css\">");
+                    pw.println("  </head>");
+                    pw.println();
+                    pw.println("  <body>");
+                    pw.println("    <p>OVERVIEW DEFINITION</p>");
+                    pw.println();
+
+                    for (AntTypeGroup typeGroup : antTypeGroups) {
+
+                        if (typeGroup.types.isEmpty()) continue;
+
+                        pw.println("    <h1>" + typeGroup.typeGroupHeading + " summary</h1>");
+                        pw.println("    <dl>");
+                        for (final AntType antType : typeGroup.types) {
+                            try {
+                                pw.println((
+                                    "      <dt><code>"
+                                    + html.makeLink(rootDoc, antType.classDoc, null, null, rootDoc)
+                                    + "</code></dt>"
+                                ));
+                                pw.println((
+                                    "      <dd>"
+                                    + html.fromTags(antType.classDoc.firstSentenceTags(), antType.classDoc, rootDoc)
+                                    + "</dd>"
+                                ));
+                            } catch (Longjump l) {}
+                        }
+                        pw.println("    </dl>");
+                    }
+                    pw.println("  </body>");
+                    pw.println("</html>");
+                }
+            }
+        );
+
         return true;
+    }
+
+    private static LinkMaker
+    linkMaker(
+        @Nullable final AntType      antType,
+        @Nullable final AntTypeGroup typeGroup,
+        final List<AntTypeGroup>     antTypeGroups,
+        RootDoc                      rootDoc
+    ) {
+
+        return new LinkMaker() {
+
+            @Override public String
+            makeHref(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
+
+                // Link to an ANT type?
+                if (to instanceof ClassDoc) {
+                    ClassDoc toClass = (ClassDoc) to;
+                    for (AntTypeGroup tg : antTypeGroups) {
+                        for (AntType t : tg.types) {
+                            if (toClass == t.classDoc) {
+                                return (
+                                    antType == null ? tg.name + '/' + t.name + ".html" :
+                                    tg == typeGroup ? t.name + ".html" :
+                                    "../" + tg.name + '/' + t.name + ".html"
+                                );
+                            }
+                        }
+                    }
+
+                    rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
+                    throw new Longjump();
+                }
+
+                if (to instanceof MethodDoc) {
+                    MethodDoc toMethod = (MethodDoc) to;
+                    ClassDoc  toClass  = toMethod.containingClass();
+                    for (AntTypeGroup tg : antTypeGroups) {
+                        for (AntType t : tg.types) {
+                            if (t.classDoc != toClass) continue;
+
+                            // Link to an attribute (of the same or a different ANT type)?
+                            for (AntAttribute a : t.attributes) {
+                                if (a.methodDoc == toMethod) {
+                                    String fragment = '#' + a.name;
+                                    return (
+                                        antType == null ? tg.name + '/' + t.name + fragment :
+                                        toClass == antType.classDoc ? fragment :
+                                        typeGroup == tg ? t.name + fragment :
+                                        "../" + tg.name + '/' + t.name + fragment
+                                    );
+                                }
+                            }
+
+                            // Link to a subelement (of the same or a different ANT type)?
+                            for (AntSubelement s : t.subelements) {
+                                if (s.methodDoc == toMethod) {
+                                    String fragment = (
+                                        "#<"
+                                        + (s.name != null ? s.name : s.type.asClassDoc().qualifiedName())
+                                        + '>'
+                                    );
+                                    return (
+                                        antType == null ? tg.name + '/' + t.name + fragment :
+                                        toMethod.containingClass() == antType.classDoc ? fragment :
+                                        typeGroup == tg ? antType.name + fragment :
+                                        "../" + tg.name + '/' + antType.name + fragment
+                                    );
+                                }
+                            }
+
+                            rootDoc.printError(from.position(), (
+                                "'"
+                                + to
+                                + "' does not designate an attribute or subelement of type '<"
+                                + t.name
+                                + ">'"
+                            ));
+                        }
+                        throw new Longjump();
+                    }
+
+                    rootDoc.printError(
+                        from.position(),
+                        "Linking from '" + from + "' to '" + to + "': " + toClass + "' is not an ANT type"
+                    );
+                    throw new Longjump();
+                }
+
+                rootDoc.printError(
+                    from.position(),
+                    "'" + to + "' does not designate a type, attribute or subelement"
+                );
+                throw new Longjump();
+            }
+
+            @Override public String
+            makeDefaultLabel(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
+
+                if (to instanceof ClassDoc) {
+                    ClassDoc toClass = (ClassDoc) to;
+                    for (AntTypeGroup atg : antTypeGroups) {
+                        for (AntType t : atg.types) {
+                            if (toClass == t.classDoc) return "&lt;" + t.name + "&gt;";
+                        }
+                    }
+                }
+
+                if (to instanceof MethodDoc) {
+                    MethodDoc toMethod = (MethodDoc) to;
+                    for (AntTypeGroup atg : antTypeGroups) {
+                        for (AntType t : atg.types) {
+                            for (AntAttribute a : t.attributes) {
+                                if (a.methodDoc == toMethod) return a.name + "=\"...\"";
+                            }
+                            for (AntSubelement s : t.subelements) {
+                                if (s.methodDoc == toMethod) return "&lt;" + s.name + "&gt;";
+                            }
+                        }
+                    }
+                }
+
+                rootDoc.printError(
+                    from.position(),
+                    "'" + to + "' does not designate a task, attribute or subelement"
+                );
+                throw new Longjump();
+            }
+        };
     }
 
     private static boolean
