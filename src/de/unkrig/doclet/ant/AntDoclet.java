@@ -76,6 +76,7 @@ import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
+import de.unkrig.commons.util.collections.IterableUtil;
 
 /**
  * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
@@ -110,28 +111,32 @@ class AntDoclet {
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
 
     private static final
-    class AntTask {
+    class AntType {
 
-        final String              name;
-        final ClassDoc            classDoc;
-        @Nullable final MethodDoc characterData;
-        final List<AntAttribute>  attributes;
-        final List<AntSubelement> subelements;
+        final String               name;
+        final ClassDoc             classDoc;
+        @Nullable private ClassDoc adaptTo;
+        @Nullable final MethodDoc  characterData;
+        final List<AntAttribute>   attributes;
+        final List<AntSubelement>  subelements;
 
         /**
+         * @param adaptTo TODO
          * @param characterData The {@link MethodDoc} of the (optional) "{@code addText(String)}" method that ANT
          *                      invokes for text nested between the start end end tags
          */
         public
-        AntTask(
+        AntType(
             String              name,
             ClassDoc            classDoc,
+            @Nullable ClassDoc  adaptTo,
             @Nullable MethodDoc characterData,
             List<AntAttribute>  attributes,
             List<AntSubelement> subelements
         ) {
             this.name          = name;
             this.classDoc      = classDoc;
+            this.adaptTo       = adaptTo;
             this.characterData = characterData;
             this.attributes    = attributes;
             this.subelements   = subelements;
@@ -232,36 +237,49 @@ class AntDoclet {
 
         document.getDocumentElement().normalize();
 
+        final List<AntType> tasks               = new ArrayList<AntType>();
+        final List<AntType> resourceCollections = new ArrayList<AntType>();
+        final List<AntType> chainableReaders    = new ArrayList<AntType>();
+        final List<AntType> conditions          = new ArrayList<AntType>();
+        final List<AntType> otherTypes          = new ArrayList<AntType>();
+
         // Now parse the contents of the given ANTLIB file; see
         // https://ant.apache.org/manual/Types/antlib.html
-        final List<AntTask> tasks = new ArrayList<AntTask>();
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
             try {
-                tasks.add(AntDoclet.parseTaskdef(taskdefElement, rootDoc));
+                tasks.add(AntDoclet.parseType(taskdefElement, rootDoc));
             } catch (Longjump l) {}
         }
 
-        if (document.getElementsByTagName("typedef").getLength() > 0) {
-            rootDoc.printWarning("<typedef>s are not yet supported");
+        for (Element typedefElement : IterableUtil.concat(
+            AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
+            AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
+        )) {
+            AntType type;
+            try {
+                type = AntDoclet.parseType(typedefElement, rootDoc);
+            } catch (Longjump l) {
+                continue;
+            }
+
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.Task", rootDoc)) {
+                tasks.add(type);
+            } else
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.types.ResourceCollection", rootDoc)) {
+                resourceCollections.add(type);
+            } else
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.filters.ChainableReader", rootDoc)) {
+                chainableReaders.add(type);
+            } else
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.taskdefs.condition.Condition", rootDoc)) {
+                conditions.add(type);
+            } else
+            {
+                otherTypes.add(type);
+            }
         }
 
-        if (document.getElementsByTagName("macrodef").getLength() > 0) {
-            rootDoc.printWarning("<macrodef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("presetdef").getLength() > 0) {
-            rootDoc.printWarning("<presetdef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-            rootDoc.printWarning("<scriptdef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("componentdef").getLength() > 0) {
-            rootDoc.printWarning("<componentdef>s are not yet supported");
-        }
-
-        for (final AntTask task : tasks) {
+        for (final AntType task : tasks) {
 
             // Because the HTML page hierarchy and the fragment identifier names are different from the standard
             // JAVADOC structure, we must have a custom link maker.
@@ -273,7 +291,7 @@ class AntDoclet {
                     // Link to an ANT task?
                     if (to instanceof ClassDoc) {
                         ClassDoc toClass = (ClassDoc) to;
-                        for (AntTask t : tasks) {
+                        for (AntType t : tasks) {
                             if (toClass == t.classDoc) return t.name + ".html";
                         }
 
@@ -284,7 +302,7 @@ class AntDoclet {
                     if (to instanceof MethodDoc) {
                         MethodDoc toMethod = (MethodDoc) to;
                         ClassDoc  toClass  = toMethod.containingClass();
-                        for (AntTask t : tasks) {
+                        for (AntType t : tasks) {
 
                             if (t.classDoc != toClass) continue;
 
@@ -342,14 +360,14 @@ class AntDoclet {
 
                     if (to instanceof ClassDoc) {
                         ClassDoc toClass = (ClassDoc) to;
-                        for (AntTask t : tasks) {
+                        for (AntType t : tasks) {
                             if (toClass == t.classDoc) return "&lt;" + t.name + "&gt;";
                         }
                     }
 
                     if (to instanceof MethodDoc) {
                         MethodDoc toMethod = (MethodDoc) to;
-                        for (AntTask t : tasks) {
+                        for (AntType t : tasks) {
                             for (AntAttribute a : t.attributes) {
                                 if (a.methodDoc == toMethod) return a.name + "=\"...\"";
                             }
@@ -720,34 +738,96 @@ class AntDoclet {
             );
         }
 
+        if (resourceCollections.size() > 0) {
+            rootDoc.printWarning("Resource collections are not yet supported");
+        }
+        if (resourceCollections.size() > 0) {
+            rootDoc.printWarning("Chainable readers are not yet supported");
+        }
+        if (resourceCollections.size() > 0) {
+            rootDoc.printWarning("Conditions are not yet supported");
+        }
+        if (resourceCollections.size() > 0) {
+            rootDoc.printWarning("Other typesare not yet supported");
+        }
+
+        if (document.getElementsByTagName("macrodef").getLength() > 0) {
+            rootDoc.printWarning("<macrodef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("presetdef").getLength() > 0) {
+            rootDoc.printWarning("<presetdef>s are not yet supported");
+        }
+
+        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+            rootDoc.printWarning("<scriptdef>s are not yet supported");
+        }
+
         return true;
     }
 
-    private static AntTask
-    parseTaskdef(Element taskdefElement, RootDoc rootDoc) throws Longjump {
+    private static boolean
+    typeIs(AntType type, String qualifiedInterfaceName, RootDoc rootDoc) {
 
-        final String taskName = taskdefElement.getAttribute("name");
-        if (taskName == null) {
-            rootDoc.printError("<taskdef> lacks the name");
-            throw new Longjump();
+        ClassDoc interfaceClassDoc = rootDoc.classNamed(qualifiedInterfaceName);
+        assert interfaceClassDoc != null : qualifiedInterfaceName;
+
+        if (Docs.isSubclassOf(type.classDoc, interfaceClassDoc)) return true;
+
+        ClassDoc adaptTo = type.adaptTo;
+        if (adaptTo != null) {
+            if (Docs.isSubclassOf(adaptTo, interfaceClassDoc)) return true;
         }
 
-        String taskClassname = taskdefElement.getAttribute("classname");
-        if (taskClassname == null) {
-            rootDoc.printError("<taskdef> lacks the class name");
-            throw new Longjump();
+        return false;
+    }
+
+    private static AntType
+    parseType(Element taskdefElement, RootDoc rootDoc) throws Longjump {
+
+        final String taskName;
+        {
+            taskName = taskdefElement.getAttribute("name");
+            if (taskName == null) {
+                rootDoc.printError("<taskdef> lacks the name");
+                throw new Longjump();
+            }
         }
 
-        final ClassDoc classDoc = Docs.findClass(rootDoc, taskClassname);
-        if (classDoc == null) {
-            rootDoc.printError("Class '" + taskClassname + "' not found for <anttask> '" + taskName + "'");
-            throw new Longjump();
+        final ClassDoc classDoc;
+        {
+            String classnameAttribute = taskdefElement.getAttribute("classname");
+            if (classnameAttribute.length() == 0) {
+                rootDoc.printError("<taskdef> lacks the class name");
+                throw new Longjump();
+            }
+            classDoc = rootDoc.classNamed(classnameAttribute);
+            if (classDoc == null) {
+                rootDoc.printError("Class '" + classnameAttribute + "' not found for <anttask> '" + taskName + "'");
+                throw new Longjump();
+            }
+        }
+
+        final ClassDoc adaptTo;
+        ADAPT_TO: {
+            String adaptToAttribute = taskdefElement.getAttribute("adaptTo");
+            if (adaptToAttribute.length() == 0) {
+                adaptTo = null;
+                break ADAPT_TO;
+            }
+
+            adaptTo = rootDoc.classNamed(adaptToAttribute);
+            if (adaptTo == null) {
+                rootDoc.printError("Class '" + adaptToAttribute + "' not found for <anttask> '" + taskName + "'");
+                throw new Longjump();
+            }
         }
 
         // Deduce attributes and subelements from the special methods that ANT uses.
-        return new AntTask(
+        return new AntType(
             taskName,
             classDoc,
+            adaptTo,
             AntDoclet.characterDataOf(classDoc),
             AntDoclet.attributesOf(classDoc),
             AntDoclet.subelementsOf(classDoc)
