@@ -29,6 +29,7 @@ package de.unkrig.doclet.ant;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.Reader;
@@ -42,6 +43,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -77,11 +79,11 @@ import de.unkrig.commons.io.LineUtil;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
+import de.unkrig.commons.lang.protocol.Mapping;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
 import de.unkrig.commons.text.pattern.PatternUtil;
 import de.unkrig.commons.util.collections.IterableUtil;
-import de.unkrig.commons.util.collections.MapUtil;
 
 /**
  * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
@@ -119,12 +121,30 @@ class AntDoclet {
     private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?([A-Z]\\w*)");
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
 
-    protected static final Map<String /*qualifiedTypeName*/, String /*href*/>
-    ANT_STANDARD_TYPES = MapUtil.fromMappings(
-        "org.apache.tools.ant.types.DirSet",             "http://ant.apache.org/manual/Types/dirset.html",
-        "org.apache.tools.ant.types.FileSet",            "http://ant.apache.org/manual/Types/fileset.html",
-        "org.apache.tools.ant.types.ResourceCollection", "http://ant.apache.org/manual/Types/resources.html#collection"
-    );
+    private static final Mapping<String /*qualifiedTypeName*/, String /*href*/> ANT_STANDARD_TYPES;
+    static {
+        final Properties p = new Properties();
+
+        InputStream is = AntDoclet.class.getResourceAsStream("ant-standard-types.properties");
+        assert is != null;
+        try {
+            p.load(is);
+            is.close();
+        } catch (IOException ioe) {
+            throw new ExceptionInInitializerError(ioe);
+        } finally {
+            try { is.close(); } catch (Exception e) {}
+        }
+
+        ANT_STANDARD_TYPES = new Mapping<String, String>() {
+
+            @Override public boolean
+            containsKey(@Nullable Object key) { return p.getProperty((String) key) != null; }
+
+            @Override @Nullable public String
+            get(@Nullable Object key) { return p.getProperty((String) key); }
+        };
+    }
 
     private static final
     class AntTypeGroup {
@@ -442,7 +462,7 @@ class AntDoclet {
                             pw.println();
 
                             try {
-                                printType(antType, html, rootDoc, pw);
+                                this.printType(antType, html, rootDoc, pw);
                             } catch (Longjump l) {}
 
                             pw.println("  </body>");
@@ -461,7 +481,7 @@ class AntDoclet {
                                 pw.println("    <h3>Text between start and end tag</h3>");
                                 pw.println();
                                 pw.println("    <dl>");
-                                printCharacterData(characterData, html, rootDoc, pw);
+                                this.printCharacterData(characterData, html, rootDoc, pw);
                                 pw.println("    </dl>");
                             }
 
@@ -473,7 +493,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntAttribute attribute : antType.attributes) {
-                                    printAttribute(attribute, html, rootDoc, pw);
+                                    this.printAttribute(attribute, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -484,7 +504,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntSubelement subelement : antType.subelements) {
-                                    printSubelement(subelement, html, rootDoc, pw);
+                                    this.printSubelement(subelement, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -517,7 +537,7 @@ class AntDoclet {
                         private void
                         printAttribute(AntAttribute attribute, final Html html, final RootDoc rootDoc, PrintWriter pw) {
 
-                            String defaultValueHtmlText = defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
+                            String defaultValueHtmlText = this.defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
 
                             // See http://ant.apache.org/manual/develop.html#set-magic
                             String rhs;
@@ -574,7 +594,7 @@ class AntDoclet {
                                         "<var>"
                                         + html.makeLink(
                                             attribute.methodDoc,
-                                            getSingleStringParameterConstructor(
+                                            this.getSingleStringParameterConstructor(
                                                 (ClassDoc) attributeType,
                                                 attribute.methodDoc,
                                                 rootDoc
@@ -685,7 +705,7 @@ class AntDoclet {
                                     pw.println("<dd><b>Text between start and end tag:</b></dd>");
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
-                                    printCharacterData(characterData, html, rootDoc, pw);
+                                    this.printCharacterData(characterData, html, rootDoc, pw);
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
                                 }
@@ -698,7 +718,7 @@ class AntDoclet {
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
                                     for (AntAttribute subelementAttribute : subelementAttributes) {
-                                        printAttribute(subelementAttribute, html, rootDoc, pw);
+                                        this.printAttribute(subelementAttribute, html, rootDoc, pw);
                                     }
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
@@ -712,7 +732,7 @@ class AntDoclet {
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
                                     for (AntSubelement subelementSubelement : subelementSubelements) {
-                                        printSubelement(subelementSubelement, html, rootDoc, pw);
+                                        this.printSubelement(subelementSubelement, html, rootDoc, pw);
                                     }
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
@@ -1215,14 +1235,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return idx < nl.getLength(); }
+                    hasNext() { return this.idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
                         return result;
                     }
 
