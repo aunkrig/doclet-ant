@@ -81,6 +81,7 @@ import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
 import de.unkrig.commons.text.pattern.PatternUtil;
 import de.unkrig.commons.util.collections.IterableUtil;
+import de.unkrig.commons.util.collections.MapUtil;
 
 /**
  * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
@@ -117,6 +118,13 @@ class AntDoclet {
     private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
     private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?([A-Z]\\w*)");
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
+
+    protected static final Map<String /*qualifiedTypeName*/, String /*href*/>
+    ANT_STANDARD_TYPES = MapUtil.fromMappings(
+        "org.apache.tools.ant.types.DirSet",             "http://ant.apache.org/manual/Types/dirset.html",
+        "org.apache.tools.ant.types.FileSet",            "http://ant.apache.org/manual/Types/fileset.html",
+        "org.apache.tools.ant.types.ResourceCollection", "http://ant.apache.org/manual/Types/resources.html#collection"
+    );
 
     private static final
     class AntTypeGroup {
@@ -402,7 +410,7 @@ class AntDoclet {
 
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
-                final LinkMaker linkMaker = linkMaker(antType, typeGroup, antTypeGroups, rootDoc);
+                final LinkMaker linkMaker = AntDoclet.linkMaker(antType, typeGroup, antTypeGroups, rootDoc);
 
                 final Html html = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
 
@@ -434,7 +442,7 @@ class AntDoclet {
                             pw.println();
 
                             try {
-                                this.printType(antType, html, rootDoc, pw);
+                                printType(antType, html, rootDoc, pw);
                             } catch (Longjump l) {}
 
                             pw.println("  </body>");
@@ -453,7 +461,7 @@ class AntDoclet {
                                 pw.println("    <h3>Text between start and end tag</h3>");
                                 pw.println();
                                 pw.println("    <dl>");
-                                this.printCharacterData(characterData, html, rootDoc, pw);
+                                printCharacterData(characterData, html, rootDoc, pw);
                                 pw.println("    </dl>");
                             }
 
@@ -465,7 +473,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntAttribute attribute : antType.attributes) {
-                                    this.printAttribute(attribute, html, rootDoc, pw);
+                                    printAttribute(attribute, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -476,7 +484,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntSubelement subelement : antType.subelements) {
-                                    this.printSubelement(subelement, html, rootDoc, pw);
+                                    printSubelement(subelement, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -509,7 +517,7 @@ class AntDoclet {
                         private void
                         printAttribute(AntAttribute attribute, final Html html, final RootDoc rootDoc, PrintWriter pw) {
 
-                            String defaultValueHtmlText = this.defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
+                            String defaultValueHtmlText = defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
 
                             // See http://ant.apache.org/manual/develop.html#set-magic
                             String rhs;
@@ -566,7 +574,7 @@ class AntDoclet {
                                         "<var>"
                                         + html.makeLink(
                                             attribute.methodDoc,
-                                            this.getSingleStringParameterConstructor(
+                                            getSingleStringParameterConstructor(
                                                 (ClassDoc) attributeType,
                                                 attribute.methodDoc,
                                                 rootDoc
@@ -677,7 +685,7 @@ class AntDoclet {
                                     pw.println("<dd><b>Text between start and end tag:</b></dd>");
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
-                                    this.printCharacterData(characterData, html, rootDoc, pw);
+                                    printCharacterData(characterData, html, rootDoc, pw);
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
                                 }
@@ -690,7 +698,7 @@ class AntDoclet {
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
                                     for (AntAttribute subelementAttribute : subelementAttributes) {
-                                        this.printAttribute(subelementAttribute, html, rootDoc, pw);
+                                        printAttribute(subelementAttribute, html, rootDoc, pw);
                                     }
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
@@ -704,7 +712,7 @@ class AntDoclet {
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
                                     for (AntSubelement subelementSubelement : subelementSubelements) {
-                                        this.printSubelement(subelementSubelement, html, rootDoc, pw);
+                                        printSubelement(subelementSubelement, html, rootDoc, pw);
                                     }
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
@@ -767,7 +775,7 @@ class AntDoclet {
             rootDoc.printWarning("<scriptdef>s are not yet supported");
         }
 
-        final LinkMaker linkMaker = linkMaker(null, null, antTypeGroups, rootDoc);
+        final LinkMaker linkMaker = AntDoclet.linkMaker(null, null, antTypeGroups, rootDoc);
 
         final Html html = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
 
@@ -900,6 +908,9 @@ class AntDoclet {
                         }
                     }
 
+                    String href = AntDoclet.ANT_STANDARD_TYPES.get(((ClassDoc) to).qualifiedTypeName());
+                    if (href != null) return href;
+
                     rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
                     throw new Longjump();
                 }
@@ -991,6 +1002,9 @@ class AntDoclet {
                         }
                     }
                 }
+
+                String href = AntDoclet.ANT_STANDARD_TYPES.get(((ClassDoc) to).qualifiedTypeName());
+                if (href != null) return href;
 
                 rootDoc.printError(
                     from.position(),
@@ -1201,14 +1215,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return this.idx < nl.getLength(); }
+                    hasNext() { return idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
                         return result;
                     }
 
