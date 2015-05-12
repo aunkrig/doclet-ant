@@ -599,8 +599,10 @@ class AntDoclet {
                                                 attribute.methodDoc,
                                                 rootDoc
                                             ),
+                                            false, // plain
                                             CamelCase.toHyphenSeparated(attributeType.simpleTypeName()),
-                                            null, rootDoc
+                                            null, // target
+                                            rootDoc
                                         )
                                         + "</var>"
                                     );
@@ -649,7 +651,14 @@ class AntDoclet {
                                 try {
                                     pw.println(
                                         "        Any <code>"
-                                        + html.makeLink(antType.classDoc, subelementTypeClassDoc, null, null, rootDoc)
+                                        + html.makeLink(
+                                            antType.classDoc,
+                                            subelementTypeClassDoc,
+                                            false, // plain
+                                            null,  // label
+                                            null,  // target
+                                            rootDoc
+                                        )
                                         + "</code>"
                                     );
                                 } catch (Longjump l) {
@@ -826,11 +835,14 @@ class AntDoclet {
                         pw.println("      <dt>" + typeGroup.typeGroupHeading + "</dt>");
                         for (final AntType antType : typeGroup.types) {
                             try {
-                                pw.println((
-                                    "      <dd><code>"
-                                    + html.makeLink(rootDoc, antType.classDoc, null, "definitionFrame", rootDoc)
-                                    + "</code></dd>"
-                                ));
+                                pw.println("      <dd><code>" + html.makeLink(
+                                    rootDoc,
+                                    antType.classDoc,
+                                    false,             // plain
+                                    null,              // label
+                                    "definitionFrame", // target
+                                    rootDoc
+                                ) + "</code></dd>");
                             } catch (Longjump l) {}
                         }
                     }
@@ -877,11 +889,14 @@ class AntDoclet {
                         pw.println("    <dl>");
                         for (final AntType antType : typeGroup.types) {
                             try {
-                                pw.println((
-                                    "      <dt><code>"
-                                    + html.makeLink(rootDoc, antType.classDoc, null, null, rootDoc)
-                                    + "</code></dt>"
-                                ));
+                                pw.println("      <dt><code>" + html.makeLink(
+                                    rootDoc,
+                                    antType.classDoc,
+                                    false, // plain
+                                    null,  // label
+                                    null,  // target
+                                    rootDoc
+                                ) + "</code></dt>");
                                 pw.println((
                                     "      <dd>"
                                     + html.fromTags(antType.classDoc.firstSentenceTags(), antType.classDoc, rootDoc)
