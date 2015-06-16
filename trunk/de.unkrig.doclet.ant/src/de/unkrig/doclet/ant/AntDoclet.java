@@ -181,7 +181,7 @@ class AntDoclet {
                 }
             }
 
-            externalAntdocs = Mappings.fromMap(m);
+            this.externalAntdocs = Mappings.fromMap(m);
         }
 
 
@@ -212,7 +212,7 @@ class AntDoclet {
                 m.put(qualifiedClassName, antTypeName);
             }
 
-            knownTypes = Mappings.fromMap(m);
+            this.knownTypes = Mappings.fromMap(m);
         }
     }
 
@@ -381,16 +381,16 @@ class AntDoclet {
     private void
     start2() throws IOException, ParserConfigurationException, SAXException {
 
-        if (!destination.isDirectory()) {
-            if (!destination.mkdirs()) {
-                throw new IOException("Cannot create destination directory \"" + destination + "\"");
+        if (!this.destination.isDirectory()) {
+            if (!this.destination.mkdirs()) {
+                throw new IOException("Cannot create destination directory \"" + this.destination + "\"");
             }
         }
 
         IoUtil.copy(
             AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/templates/stylesheet.css"),
             true, // closeInputStream
-            new File(destination, "stylesheet.css"),
+            new File(this.destination, "stylesheet.css"),
             false // append
         );
 
@@ -399,9 +399,9 @@ class AntDoclet {
 
             Reader in = new InputStreamReader(AntDoclet.class.getClassLoader().getResourceAsStream(resourceName));
             try {
-                FileWriter out = new FileWriter(new File(destination, "index.html"));
+                FileWriter out = new FileWriter(new File(this.destination, "index.html"));
                 try {
-                    PatternUtil.replaceAll(resourceName, in, Pattern.compile("@WINDOW_TITLE@"), windowTitle, out);
+                    PatternUtil.replaceAll(resourceName, in, Pattern.compile("@WINDOW_TITLE@"), this.windowTitle, out);
                     out.close();
                 } finally {
                     try { out.close(); } catch (Exception e) {}
@@ -414,7 +414,7 @@ class AntDoclet {
 
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
-        Document               document               = documentBuilder.parse(antlibFile);
+        Document               document               = documentBuilder.parse(this.antlibFile);
 
         document.getDocumentElement().normalize();
 
@@ -428,7 +428,7 @@ class AntDoclet {
         // https://ant.apache.org/manual/Types/antlib.html
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
             try {
-                tasks.add(AntDoclet.parseType(taskdefElement, rootDoc));
+                tasks.add(AntDoclet.parseType(taskdefElement, this.rootDoc));
             } catch (Longjump l) {}
         }
 
@@ -438,21 +438,21 @@ class AntDoclet {
         )) {
             AntType type;
             try {
-                type = AntDoclet.parseType(typedefElement, rootDoc);
+                type = AntDoclet.parseType(typedefElement, this.rootDoc);
             } catch (Longjump l) {
                 continue;
             }
 
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.Task", rootDoc)) {
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.Task", this.rootDoc)) {
                 tasks.add(type);
             } else
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.types.ResourceCollection", rootDoc)) {
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.types.ResourceCollection", this.rootDoc)) {
                 resourceCollections.add(type);
             } else
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.filters.ChainableReader", rootDoc)) {
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.filters.ChainableReader", this.rootDoc)) {
                 chainableReaders.add(type);
             } else
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.taskdefs.condition.Condition", rootDoc)) {
+            if (AntDoclet.typeIs(type, "org.apache.tools.ant.taskdefs.condition.Condition", this.rootDoc)) {
                 conditions.add(type);
             } else
             {
@@ -503,14 +503,14 @@ class AntDoclet {
 
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
-                final LinkMaker linkMaker = linkMaker(antType, typeGroup, antTypeGroups, rootDoc);
+                final LinkMaker linkMaker = this.linkMaker(antType, typeGroup, antTypeGroups, this.rootDoc);
 
-                final Html html = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
+                final Html html = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
 
                 final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
 
                 FileUtil.printToFile(
-                    new File(destination, typeGroup.name + '/' + antType.name + ".html"),
+                    new File(this.destination, typeGroup.name + '/' + antType.name + ".html"),
                     Charset.forName("ISO8859-1"),
                     new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
@@ -535,7 +535,7 @@ class AntDoclet {
                             pw.println();
 
                             try {
-                                printType(antType, html, rootDoc, pw);
+                                this.printType(antType, html, AntDoclet.this.rootDoc, pw);
                             } catch (Longjump l) {}
 
                             pw.println("  </body>");
@@ -554,7 +554,7 @@ class AntDoclet {
                                 pw.println("    <h3>Text between start and end tag</h3>");
                                 pw.println();
                                 pw.println("    <dl>");
-                                printCharacterData(characterData, html, rootDoc, pw);
+                                this.printCharacterData(characterData, html, rootDoc, pw);
                                 pw.println("    </dl>");
                             }
 
@@ -566,7 +566,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntAttribute attribute : antType.attributes) {
-                                    printAttribute(attribute, html, rootDoc, pw);
+                                    this.printAttribute(attribute, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -577,7 +577,7 @@ class AntDoclet {
                                 pw.println();
                                 pw.println("    <dl>");
                                 for (AntSubelement subelement : antType.subelements) {
-                                    printSubelement(subelement, html, rootDoc, pw);
+                                    this.printSubelement(subelement, html, rootDoc, pw);
                                 }
                                 pw.println("    </dl>");
                             }
@@ -610,7 +610,7 @@ class AntDoclet {
                         private void
                         printAttribute(AntAttribute attribute, final Html html, final RootDoc rootDoc, PrintWriter pw) {
 
-                            String defaultValueHtmlText = defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
+                            String defaultValueHtmlText = this.defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
 
                             // See http://ant.apache.org/manual/develop.html#set-magic
                             String rhs;
@@ -667,7 +667,7 @@ class AntDoclet {
                                         "<var>"
                                         + html.makeLink(
                                             attribute.methodDoc,
-                                            getSingleStringParameterConstructor(
+                                            this.getSingleStringParameterConstructor(
                                                 (ClassDoc) attributeType,
                                                 attribute.methodDoc,
                                                 rootDoc
@@ -787,7 +787,7 @@ class AntDoclet {
                                     pw.println("<dd><b>Text between start and end tag:</b></dd>");
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
-                                    printCharacterData(characterData, html, rootDoc, pw);
+                                    this.printCharacterData(characterData, html, rootDoc, pw);
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
                                 }
@@ -800,7 +800,7 @@ class AntDoclet {
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
                                     for (AntAttribute subelementAttribute : subelementAttributes) {
-                                        printAttribute(subelementAttribute, html, rootDoc, pw);
+                                        this.printAttribute(subelementAttribute, html, rootDoc, pw);
                                     }
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
@@ -814,7 +814,7 @@ class AntDoclet {
                                     pw.println("<dd>");
                                     pw.println("  <dl>");
                                     for (AntSubelement subelementSubelement : subelementSubelements) {
-                                        printSubelement(subelementSubelement, html, rootDoc, pw);
+                                        this.printSubelement(subelementSubelement, html, rootDoc, pw);
                                     }
                                     pw.println("  </dl>");
                                     pw.println("</dd>");
@@ -860,30 +860,31 @@ class AntDoclet {
                             );
                             throw new Longjump();
                         }
-                    }
+                    },
+                    true // createMissingParentDirectories
                 );
             }
         }
 
         if (document.getElementsByTagName("macrodef").getLength() > 0) {
-            rootDoc.printWarning("<macrodef>s are not yet supported");
+            this.rootDoc.printWarning("<macrodef>s are not yet supported");
         }
 
         if (document.getElementsByTagName("presetdef").getLength() > 0) {
-            rootDoc.printWarning("<presetdef>s are not yet supported");
+            this.rootDoc.printWarning("<presetdef>s are not yet supported");
         }
 
         if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-            rootDoc.printWarning("<scriptdef>s are not yet supported");
+            this.rootDoc.printWarning("<scriptdef>s are not yet supported");
         }
 
-        final LinkMaker linkMaker = linkMaker(null, null, antTypeGroups, rootDoc);
+        final LinkMaker linkMaker = this.linkMaker(null, null, antTypeGroups, this.rootDoc);
 
-        final Html html = new Html(new Html.ExternalJavadocsLinkMaker(externalJavadocs, linkMaker));
+        final Html html = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
         FileUtil.printToFile(
-            new File(destination, "alldefinitions-frame.html"),
+            new File(this.destination, "alldefinitions-frame.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
@@ -909,12 +910,12 @@ class AntDoclet {
                         for (final AntType antType : typeGroup.types) {
                             try {
                                 pw.println("      <dd><code>" + html.makeLink(
-                                    rootDoc,
+                                    AntDoclet.this.rootDoc,
                                     antType.classDoc,
                                     false,             // plain
                                     null,              // label
                                     "definitionFrame", // target
-                                    rootDoc
+                                    AntDoclet.this.rootDoc
                                 ) + "</code></dd>");
                             } catch (Longjump l) {}
                         }
@@ -923,14 +924,15 @@ class AntDoclet {
                     pw.println("  </body>");
                     pw.println("</html>");
                 }
-            }
+            },
+            true // createMissingParentDirectories
         );
 
         // Generate the document that is initially loaded into the "right frame" and displays all type summaries
         // (type name and first sentence of description).
-        final String docTitle2 = docTitle;
+        final String docTitle2 = this.docTitle;
         FileUtil.printToFile(
-            new File(destination, "overview-summary.html"),
+            new File(this.destination, "overview-summary.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
@@ -963,16 +965,20 @@ class AntDoclet {
                         for (final AntType antType : typeGroup.types) {
                             try {
                                 pw.println("      <dt><code>" + html.makeLink(
-                                    rootDoc,
+                                    AntDoclet.this.rootDoc,
                                     antType.classDoc,
                                     false, // plain
                                     null,  // label
                                     null,  // target
-                                    rootDoc
+                                    AntDoclet.this.rootDoc
                                 ) + "</code></dt>");
                                 pw.println((
                                     "      <dd>"
-                                    + html.fromTags(antType.classDoc.firstSentenceTags(), antType.classDoc, rootDoc)
+                                    + html.fromTags(
+                                        antType.classDoc.firstSentenceTags(), // tags
+                                        antType.classDoc,                     // ref
+                                        AntDoclet.this.rootDoc                // rootDoc
+                                    )
                                     + "</dd>"
                                 ));
                             } catch (Longjump l) {}
@@ -982,7 +988,8 @@ class AntDoclet {
                     pw.println("  </body>");
                     pw.println("</html>");
                 }
-            }
+            },
+            true // createMissingParentDirectories
         );
     }
 
@@ -996,7 +1003,7 @@ class AntDoclet {
 
         return new LinkMaker() {
 
-            @Override public String
+            @Override @Nullable public String
             makeHref(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
 
                 // Link to an ANT type?
@@ -1014,7 +1021,7 @@ class AntDoclet {
                         }
                     }
 
-                    URL target = externalAntdocs.get(to);
+                    URL target = AntDoclet.this.externalAntdocs.get(to);
                     if (target != null) return target.toString();
 
                     rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
@@ -1069,12 +1076,19 @@ class AntDoclet {
                         throw new Longjump();
                     }
 
-                    rootDoc.printError(
-                        from.position(),
-                        "Linking from '" + from + "' to '" + to + "': " + toClass + "' is not an ANT type"
-                    );
+                    rootDoc.printError(from.position(), (
+                        "Linking from '"
+                        + from
+                        + "' to '"
+                        + to
+                        + "': "
+                        + toMethod
+                        + "' is not an attribute setter nor a subelement adder/creator"
+                    ));
                     throw new Longjump();
                 }
+
+                if (to instanceof FieldDoc) return null;
 
                 rootDoc.printError(
                     from.position(),
@@ -1094,7 +1108,7 @@ class AntDoclet {
                         }
                     }
 
-                    String antTypeName = knownTypes.get(toClass.qualifiedName());
+                    String antTypeName = AntDoclet.this.knownTypes.get(toClass.qualifiedName());
                     if (antTypeName != null) return "&lt;" + antTypeName + "&gt;";
 
                     if ("org.apache.tools.ant.types.ResourceCollection".equals(toClass.qualifiedName())) {
@@ -1115,6 +1129,8 @@ class AntDoclet {
                         }
                     }
                 }
+
+                if (to instanceof FieldDoc) return to.name();
 
                 rootDoc.printError(
                     from.position(),
@@ -1325,14 +1341,14 @@ class AntDoclet {
                     int idx;
 
                     @Override public boolean
-                    hasNext() { return idx < nl.getLength(); }
+                    hasNext() { return this.idx < nl.getLength(); }
 
                     @Override public N
                     next() {
 
-                        if (idx >= nl.getLength()) throw new NoSuchElementException();
+                        if (this.idx >= nl.getLength()) throw new NoSuchElementException();
 
-                        @SuppressWarnings("unchecked") N result = (N) nl.item(idx++);
+                        @SuppressWarnings("unchecked") N result = (N) nl.item(this.idx++);
                         return result;
                     }
 
