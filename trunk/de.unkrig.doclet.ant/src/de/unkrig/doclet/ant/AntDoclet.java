@@ -509,7 +509,7 @@ class AntDoclet {
 
                 final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
 
-                FileUtil.printToFile(
+                IoUtil.printToFile(
                     new File(this.destination, typeGroup.name + '/' + antType.name + ".html"),
                     Charset.forName("ISO8859-1"),
                     new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
@@ -612,6 +612,12 @@ class AntDoclet {
 
                             String defaultValueHtmlText = this.defaultValueHtmlText(attribute.methodDoc, html, rootDoc);
 
+                            String defaultValue = (
+                                defaultValueHtmlText == null
+                                ? null
+                                : defaultValueHtmlText.replaceAll("<[^>]*>", "")
+                            );
+
                             // See http://ant.apache.org/manual/develop.html#set-magic
                             String rhs;
 
@@ -621,10 +627,18 @@ class AntDoclet {
                                 "boolean".equals(qualifiedAttributeTypeName)
                                 || "java.lang.Boolean".equals(qualifiedAttributeTypeName)
                             ) {
-                                if (Boolean.parseBoolean(defaultValueHtmlText)) {
-                                    rhs = "<u>true</u>|false";
-                                } else {
+                                if ("false".equals(defaultValue) || defaultValue == null) {
                                     rhs = "true|<u>false</u>";
+                                } else
+                                if ("true".equals(defaultValue) || defaultValue == null) {
+                                    rhs = "<u>true</u>|false";
+                                } else
+                                {
+                                    rhs = "true|false";
+                                    rootDoc.printWarning(
+                                        attribute.methodDoc.position(),
+                                        "Invalid default value \"" + defaultValue + "\" for boolean attribute"
+                                    );
                                 }
                             } else
                             if (
@@ -636,7 +650,7 @@ class AntDoclet {
                                 || "java.lang.Double".equals(qualifiedAttributeTypeName)
                             ) {
                                 rhs = "<var>N</var>";
-                                if (defaultValueHtmlText != null) rhs += "|<u>" + defaultValueHtmlText + "</u>";
+                                if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
                             } else
                             if (
                                 "java.io.File".equals(qualifiedAttributeTypeName)
@@ -648,16 +662,26 @@ class AntDoclet {
                                 || "de.unkrig.antcontrib.util.Regex".equals(qualifiedAttributeTypeName)
                             ) {
                                 rhs = "<var>" + CamelCase.toHyphenSeparated(attributeType.simpleTypeName()) + "</var>";
-                                if (defaultValueHtmlText != null) rhs += "|<u>" + defaultValueHtmlText + "</u>";
+                                if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
                             } else
                             if (attributeType instanceof Doc && ((Doc) attributeType).isEnum()) {
                                 StringBuilder sb = new StringBuilder();
+
+                                boolean hadDefault = false;
                                 for (FieldDoc enumConstant : ((ClassDoc) attributeType).enumConstants()) {
                                     if (sb.length() > 0) sb.append('|');
-                                    boolean isDefault = enumConstant.name().equals(defaultValueHtmlText);
-                                    if (isDefault) sb.append("<u>");
-                                    sb.append(enumConstant.name());
-                                    if (isDefault) sb.append("</u>");
+                                    if (enumConstant.name().equals(defaultValue)) {
+                                        sb.append("<u>").append(enumConstant.name()).append("</u>");
+                                        hadDefault = true;
+                                    } else {
+                                        sb.append(enumConstant.name());
+                                    }
+                                }
+                                if (defaultValue != null && !hadDefault) {
+                                    rootDoc.printWarning(
+                                        attribute.methodDoc.position(),
+                                        "Default value \"" + defaultValue + "\" matches none of the enum constants"
+                                    );
                                 }
                                 rhs = sb.toString();
                             } else
@@ -687,7 +711,7 @@ class AntDoclet {
                                     );
                                 }
 
-                                if (defaultValueHtmlText != null) rhs += "|<u>" + defaultValueHtmlText + "</u>";
+                                if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
                             }
 
                             pw.println("      <dt>");
@@ -883,7 +907,7 @@ class AntDoclet {
         final Html html = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
-        FileUtil.printToFile(
+        IoUtil.printToFile(
             new File(this.destination, "alldefinitions-frame.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
@@ -931,7 +955,7 @@ class AntDoclet {
         // Generate the document that is initially loaded into the "right frame" and displays all type summaries
         // (type name and first sentence of description).
         final String docTitle2 = this.docTitle;
-        FileUtil.printToFile(
+        IoUtil.printToFile(
             new File(this.destination, "overview-summary.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
@@ -972,15 +996,11 @@ class AntDoclet {
                                     null,  // target
                                     AntDoclet.this.rootDoc
                                 ) + "</code></dt>");
-                                pw.println((
-                                    "      <dd>"
-                                    + html.fromTags(
-                                        antType.classDoc.firstSentenceTags(), // tags
-                                        antType.classDoc,                     // ref
-                                        AntDoclet.this.rootDoc                // rootDoc
-                                    )
-                                    + "</dd>"
-                                ));
+                                pw.println("      <dd>" + html.fromTags(
+                                    antType.classDoc.firstSentenceTags(), // tags
+                                    antType.classDoc,                     // ref
+                                    AntDoclet.this.rootDoc                // rootDoc
+                                ) + "</dd>");
                             } catch (Longjump l) {}
                         }
                         pw.println("    </dl>");
@@ -1088,13 +1108,9 @@ class AntDoclet {
                     throw new Longjump();
                 }
 
-                if (to instanceof FieldDoc) return null;
-
-                rootDoc.printError(
-                    from.position(),
-                    "'" + to + "' does not designate a type, attribute or subelement"
-                );
-                throw new Longjump();
+                // Leave references to other elements, e.g. enum constants or constants, "unlinked", i.e. print
+                // the bare label without "<a href=...>".
+                return null;
             }
 
             @Override public String
@@ -1130,14 +1146,9 @@ class AntDoclet {
                     }
                 }
 
-                if (to instanceof FieldDoc) return to.name();
-
-                rootDoc.printError(
-                    from.position(),
-                    "'" + to + "' does not designate a task, attribute or subelement"
-                );
-                throw new Longjump();
-            }
+                // For references to other elements, e.g. enum constants or constants, return the element's name.
+                return to.name();
+             }
         };
     }
 
