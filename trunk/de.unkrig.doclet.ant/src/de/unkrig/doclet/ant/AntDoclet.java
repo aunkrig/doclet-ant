@@ -210,12 +210,15 @@ class AntDoclet {
         }
     }
 
+    /**
+     * Representation of a "group of types", e.g. "tasks", "chainable readers", etc.
+     */
     public static final
     class AntTypeGroup {
 
-        final String        name;
-        final List<AntType> types;
-        final String        typeGroupHeading;
+        final String               name;
+        final List<AntType>        types;
+        final String               typeGroupHeading;
         public final MessageFormat typeTitleMf;
         public final MessageFormat typeHeadingMf;
 
@@ -250,9 +253,8 @@ class AntDoclet {
 
         public final String               name;
         public final ClassDoc             classDoc;
-        @Nullable private ClassDoc adaptTo;
-        @Nullable
-        public final MethodDoc  characterData;
+        @Nullable private ClassDoc        adaptTo;
+        @Nullable public final MethodDoc  characterData;
         public final List<AntAttribute>   attributes;
         public final List<AntSubelement>  subelements;
 
@@ -312,11 +314,9 @@ class AntDoclet {
     class AntSubelement {
 
         public final MethodDoc        methodDoc;
-        @Nullable
-        public final String name;
+        @Nullable public final String name;
         public final Type             type;
-        @Nullable
-        public final String group;
+        @Nullable public final String group;
 
         public
         AntSubelement(MethodDoc methodDoc, @Nullable String name, Type type, @Nullable String group) {
@@ -690,17 +690,14 @@ class AntDoclet {
 
                 if (to instanceof MethodDoc) {
                     MethodDoc toMethod = (MethodDoc) to;
-//System.err.println("toMethod=" + toMethod);
                     ClassDoc  toClass  = toMethod.containingClass();
                     for (AntTypeGroup tg : antTypeGroups) {
-//System.err.println("tg=" + tg);
                         for (AntType t : tg.types) {
-//System.err.println("t=" + t);
+
                             if (t.classDoc != toClass) continue;
 
                             // Link to an attribute (of the same or a different ANT type)?
                             for (AntAttribute a : t.attributes) {
-//System.err.println("a=" + a);
                                 if (a.methodDoc == toMethod) {
                                     String fragment = '#' + a.name;
                                     return (
@@ -714,7 +711,6 @@ class AntDoclet {
 
                             // Link to a subelement (of the same or a different ANT type)?
                             for (AntSubelement s : t.subelements) {
-//System.err.println("s=" + s);
                                 if (s.methodDoc == toMethod) {
                                     String fragment = (
                                         "#<"
@@ -784,7 +780,7 @@ class AntDoclet {
 
                 // For references to other elements, e.g. enum constants or constants, return the element's name.
                 return to.name();
-             }
+            }
         };
     }
 
