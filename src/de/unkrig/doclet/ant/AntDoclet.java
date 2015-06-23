@@ -547,7 +547,7 @@ class AntDoclet {
         final Html html = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
-        IoUtil.printToFile(
+        IoUtil.outputFilePrintWriter(
             new File(this.destination, "alldefinitions-frame.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
@@ -595,7 +595,7 @@ class AntDoclet {
         // Generate the document that is initially loaded into the "right frame" and displays all type summaries
         // (type name and first sentence of description).
         final String docTitle2 = this.docTitle;
-        IoUtil.printToFile(
+        IoUtil.outputFilePrintWriter(
             new File(this.destination, "overview-summary.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
