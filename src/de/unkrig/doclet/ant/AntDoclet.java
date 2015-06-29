@@ -81,6 +81,7 @@ import de.unkrig.commons.util.collections.IterableUtil;
 import de.unkrig.doclet.ant.templates.IndexHtml;
 import de.unkrig.doclet.ant.templates.TypeHtml;
 import de.unkrig.notemplate.NoTemplate;
+import de.unkrig.notemplate.javadocish.Options;
 
 /**
  * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
@@ -118,30 +119,25 @@ class AntDoclet {
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
     private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
 
-    private RootDoc                                                              rootDoc;
-    private final File                                                           antlibFile;
-    private final File                                                           destination;
-    @Nullable private String                                                     docTitle;
-    private final String                                                         windowTitle;
-    private final Map<String /*packageName*/, URL>                               externalJavadocs;
+    private RootDoc                                rootDoc;
+    private final Options                          options;
+    private final File                             antlibFile;
+    private final Map<String /*packageName*/, URL> externalJavadocs;
+
     private final Mapping<ClassDoc, URL>                                         externalAntdocs;
     private final Mapping<String /*qualifiedClassName*/, String /*antTypeName*/> knownTypes;
 
     public
     AntDoclet(
         RootDoc          rootDoc,
+        Options          options,
         File             antlibFile,
-        File             destination,
-        @Nullable String docTitle,
-        String           windowTitle,
         Map<String, URL> externalJavadocs
     ) {
 
         this.rootDoc          = rootDoc;
+        this.options          = options;
         this.antlibFile       = antlibFile;
-        this.destination      = destination;
-        this.docTitle         = docTitle;
-        this.windowTitle      = windowTitle;
         this.externalJavadocs = externalJavadocs;
 
         {
@@ -336,12 +332,18 @@ class AntDoclet {
     public static int
     optionLength(String option) {
 
-        if ("-antlib-file".equals(option)) return 2;
-        if ("-d".equals(option)) return 2;
-        if ("-link".equals(option)) return 2;
-        if ("-linkoffline".equals(option)) return 3;
-        if ("-doctitle".equals(option)) return 2;
+        if ("-d".equals(option))           return 2;
         if ("-windowtitle".equals(option)) return 2;
+        if ("-doctitle".equals(option))    return 2;
+        if ("-header".equals(option))      return 2;
+        if ("-footer".equals(option))      return 2;
+        if ("-top".equals(option))         return 2;
+        if ("-bottom".equals(option))      return 2;
+        if ("-notimestamp".equals(option)) return 1;
+
+        if ("-antlib-file".equals(option)) return 2;
+        if ("-link".equals(option))        return 2;
+        if ("-linkoffline".equals(option)) return 3;
 
         return 0;
     }
@@ -354,17 +356,42 @@ class AntDoclet {
     start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException {
 
         File                                              antlibFile       = new File("antlib.xml");
-        File                                              destination      = new File(".");
         final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<String, URL>();
-        String                                            docTitle         = null;
-        String                                            windowTitle      = "Generated Documentation (Untitled)";
+
+        Options options   = new Options();
+        options.generator = "the ANT doclet http://doclet.unkrig.de";
 
         for (String[] option : rootDoc.options()) {
+
+            // Options that go into the "Options" object:
+            if ("-d".equals(option[0])) {
+                options.destination = new File(option[1]);
+            } else
+            if ("-windowtitle".equals(option[0])) {
+                options.windowTitle = option[1];
+            } else
+            if ("-doctitle".equals(option[0])) {
+                options.docTitle = option[1];
+            } else
+            if ("-header".equals(option[0])) {
+                options.header = option[1];
+            } else
+            if ("-footer".equals(option[0])) {
+                options.footer = option[1];
+            } else
+            if ("-top".equals(option[0])) {
+                options.top = option[1];
+            } else
+            if ("-bottom".equals(option[0])) {
+                options.bottom = option[1];
+            } else
+            if ("-notimestamp".equals(option[0])) {
+                options.noTimestamp = Boolean.parseBoolean(option[1]);
+            } else
+
+            // "Other" options.
             if ("-antlib-file".equals(option[0])) {
                 antlibFile = new File(option[1]);
-            } else
-            if ("-d".equals(option[0])) {
-                destination = new File(option[1]);
             } else
             if ("-link".equals(option[0])) {
                 URL targetUrl = new URL(option[1] + '/');
@@ -376,12 +403,6 @@ class AntDoclet {
 
                 AntDoclet.readExternalJavadocs(targetUrl, packageListUrl, externalJavadocs, rootDoc);
             } else
-            if ("-doctitle".equals(option[0])) {
-                docTitle = option[1];
-            } else
-            if ("-windowtitle".equals(option[0])) {
-                windowTitle = option[1];
-            } else
             {
 
                 // It is quite counterintuitive, but 'options()' returns ALL options, not only those which
@@ -390,7 +411,7 @@ class AntDoclet {
             }
         }
 
-        new AntDoclet(rootDoc, antlibFile, destination, docTitle, windowTitle, externalJavadocs).start2();
+        new AntDoclet(rootDoc, options, antlibFile, externalJavadocs).start2();
 
         return true;
     }
@@ -398,26 +419,20 @@ class AntDoclet {
     private void
     start2() throws IOException, ParserConfigurationException, SAXException {
 
-        if (!this.destination.isDirectory()) {
-            if (!this.destination.mkdirs()) {
-                throw new IOException("Cannot create destination directory \"" + this.destination + "\"");
-            }
-        }
-
-        IoUtil.copy(
-            AntDoclet.class.getClassLoader().getResourceAsStream("de/unkrig/doclet/ant/templates/stylesheet.css"),
-            true, // closeInputStream
-            new File(this.destination, "stylesheet.css"),
-            false // append
+        IoUtil.copyResource(
+            AntDoclet.class.getClassLoader(),
+            "de/unkrig/doclet/ant/templates/stylesheet.css",
+            new File(this.options.destination, "stylesheet.css"),
+            true                                                  // createMissingParentDirectories
         );
 
         NoTemplate.render(
             IndexHtml.class,
-            new File(this.destination, "index.html"),
+            new File(this.options.destination, "index.html"),
             new ConsumerWhichThrows<IndexHtml, RuntimeException>() {
 
                 @Override public void
-                consume(IndexHtml indexHtml) throws RuntimeException { indexHtml.render(AntDoclet.this.windowTitle); }
+                consume(IndexHtml indexHtml) throws RuntimeException { indexHtml.render(AntDoclet.this.options); }
             }
         );
 
@@ -518,12 +533,12 @@ class AntDoclet {
 
                 NoTemplate.render(
                     TypeHtml.class,
-                    new File(this.destination, typeGroup.name + '/' + antType.name + ".html"),
+                    new File(this.options.destination, typeGroup.name + '/' + antType.name + ".html"),
                     new ConsumerWhichThrows<TypeHtml, RuntimeException>() {
 
                         @Override public void
                         consume(TypeHtml typeHtml) throws RuntimeException {
-                            typeHtml.render(typeGroup, antType, html, AntDoclet.this.rootDoc);
+                            typeHtml.render(typeGroup, antType, html, AntDoclet.this.rootDoc, AntDoclet.this.options);
                         }
                     }
                 );
@@ -548,7 +563,7 @@ class AntDoclet {
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
         IoUtil.outputFilePrintWriter(
-            new File(this.destination, "alldefinitions-frame.html"),
+            new File(this.options.destination, "alldefinitions-frame.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
@@ -594,9 +609,9 @@ class AntDoclet {
 
         // Generate the document that is initially loaded into the "right frame" and displays all type summaries
         // (type name and first sentence of description).
-        final String docTitle2 = this.docTitle;
+        final String docTitle2 = this.options.docTitle;
         IoUtil.outputFilePrintWriter(
-            new File(this.destination, "overview-summary.html"),
+            new File(this.options.destination, "overview-summary.html"),
             Charset.forName("ISO8859-1"),
             new ConsumerWhichThrows<PrintWriter, RuntimeException>() {
 
