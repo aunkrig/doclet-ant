@@ -54,26 +54,24 @@ import de.unkrig.doclet.ant.AntDoclet.AntAttribute;
 import de.unkrig.doclet.ant.AntDoclet.AntSubelement;
 import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
+import de.unkrig.notemplate.HtmlTemplate;
 import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractClassFrameHtml;
 
 public
 class TypeHtml extends AbstractClassFrameHtml {
 
-    @Nullable private AntTypeGroup typeGroup;
-    @Nullable private AntType antType;
-    @Nullable private Html html;
-    @Nullable private RootDoc rootDoc;
-
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
     public void
-    render(AntTypeGroup typeGroup, AntType antType, Html html, RootDoc rootDoc, Options options) {
+    render(
+        final AntTypeGroup typeGroup,
+        final AntType      antType,
+        final Html         html,
+        final RootDoc      rootDoc,
+        Options            options
+    ) {
 
-        this.typeGroup = typeGroup;
-        this.antType   = antType;
-        this.html      = html;
-        this.rootDoc   = rootDoc;
         super.rClassFrameHtml(
             typeGroup.typeTitleMf.format(new String[] { antType.name }), // title
             options,                                                     // options
@@ -83,34 +81,33 @@ class TypeHtml extends AbstractClassFrameHtml {
             new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
             new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
             new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5
-            new String[] { "nav6", AbstractClassFrameHtml.DISABLED }     // nav6
+            new String[] { "nav6", AbstractClassFrameHtml.DISABLED },    // nav6
+            new Runnable() {
+
+                @Override public void
+                run() {
+                    String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
+                    String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
+                    TypeHtml.this.l(
+"<div class=\"header\">",
+"  <div class=\"subTitle\">" + HtmlTemplate.esc(typeGroup.typeGroupHeading) + "</div>",
+"  <h2 title=\"" + typeTitle + "\" class=\"title\">" + typeHeading +  "</h2>",
+"</div>",
+"<div class=\"contentContainer\">"
+                    );
+
+                    final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
+
+                    try {
+                        TypeHtml.this.printType(antType, html, rootDoc, seenTypes);
+                    } catch (Longjump l) {}
+
+                    TypeHtml.this.l(
+"</div>"
+                    );
+                }
+            }
         );
-    }
-
-    @Override protected void
-    rClassFrameBody() {
-
-        AntTypeGroup typeGroup = this.typeGroup;
-        AntType      antType   = this.antType;
-        Html         html      = this.html;
-        RootDoc      rootDoc   = this.rootDoc;
-
-        assert typeGroup != null;
-        assert antType   != null;
-        assert html      != null;
-        assert rootDoc   != null;
-
-        String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
-        this.l(
-"    <h1>" + typeHeading + "</h1>",
-""
-        );
-
-        final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
-
-        try {
-            this.printType(antType, html, rootDoc, seenTypes);
-        } catch (Longjump l) {}
     }
 
     private void
