@@ -212,10 +212,25 @@ class AntDoclet {
     public static final
     class AntTypeGroup {
 
-        final String               name;
+        /**
+         * E.g. {@code "tasks"}
+         */
+        final String name;
         public final List<AntType> types;
-        public final String        typeGroupHeading;
+
+        /**
+         * E.g. {@code "Tasks"}
+         */
+        public final String typeGroupHeading;
+
+        /**
+         * E.g. <code>"Task \"&amp;lt{0}&amp;gt;\""</code>
+         */
         public final MessageFormat typeTitleMf;
+
+        /**
+         * E.g. <code>"Task \"&lt;code>&amp;lt;{0}&amp;gt;&lt;/code>\""}
+         */
         public final MessageFormat typeHeadingMf;
 
         /**
@@ -423,6 +438,13 @@ class AntDoclet {
             AntDoclet.class.getClassLoader(),
             "de/unkrig/doclet/ant/templates/stylesheet.css",
             new File(this.options.destination, "stylesheet.css"),
+            true                                                  // createMissingParentDirectories
+        );
+
+        IoUtil.copyResource(
+            AntDoclet.class.getClassLoader(),
+            "de/unkrig/doclet/ant/templates/stylesheet2.css",
+            new File(this.options.destination, "stylesheet2.css"),
             true                                                  // createMissingParentDirectories
         );
 
