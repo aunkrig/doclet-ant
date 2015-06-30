@@ -16,46 +16,43 @@ public class AllDefinitionsHtml extends AbstractPackageFrameHtml {
 
     public void
     render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
-        super.rPackageFrameHtml(
-            "All types",
-            "overview-summary.html",
-            options,
-            "stylesheet.css",
-            new Runnable() {
 
-                @Override public void
-                run() {
-                    AllDefinitionsHtml.this.l(
+        super.rPackageFrameHtml(
+            "All types",                       // heading
+            "overview-summary.html",           // headingLink
+            options,                           // options
+            new String[] { "stylesheet.css" }, // stylesheetLinks
+            () -> {                            // renderBody
+                AllDefinitionsHtml.this.l(
 "    <dl>",
 ""
-                    );
-                    for (AntTypeGroup typeGroup : antTypeGroups) {
+                );
+                for (AntTypeGroup typeGroup : antTypeGroups) {
 
-                        if (typeGroup.types.isEmpty()) continue;
+                    if (typeGroup.types.isEmpty()) continue;
 
-                        AllDefinitionsHtml.this.l(
+                    AllDefinitionsHtml.this.l(
 "      <dt>" + typeGroup.typeGroupHeading + "</dt>"
-                        );
+                    );
 
-                        for (final AntType antType : typeGroup.types) {
-                            try {
-                                AllDefinitionsHtml.this.l(
+                    for (final AntType antType : typeGroup.types) {
+                        try {
+                            AllDefinitionsHtml.this.l(
 "      <dd><code>" + html.makeLink(
-    rootDoc,
-    antType.classDoc,
+    rootDoc,           // from
+    antType.classDoc,  // to
     false,             // plain
     null,              // label
-    "definitionFrame", // target
-    rootDoc
+    "classFrame",      // target
+    rootDoc            // rootDoc
 ) + "</code></dd>"
-                                );
-                            } catch (Longjump l) {}
-                        }
+                            );
+                        } catch (Longjump l) {}
                     }
-                    AllDefinitionsHtml.this.l(
-    "    </dl>"
-                    );
                 }
+                AllDefinitionsHtml.this.l(
+"    </dl>"
+                );
             }
         );
     }

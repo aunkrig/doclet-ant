@@ -49,38 +49,35 @@ class OverviewSummaryHtml extends AbstractClassFrameHtml {
         super.rClassFrameHtml(
             "Overview",                                                  // title
             options,                                                     // options
-            "stylesheet.css",                                            // stylesheetLink
+            new String[] { "stylesheet.css" },                           // stylesheetLinks
             new String[] { "nav1", AbstractClassFrameHtml.DISABLED },    // nav1
             new String[] { "nav2", AbstractClassFrameHtml.DISABLED },    // nav2
             new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
             new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
             new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5
             new String[] { "nav6", AbstractClassFrameHtml.DISABLED },    // nav6
-            new Runnable() {
+            () -> {                                                      // renderBody
 
-                @Override public void
-                run() {
-
-                    OverviewSummaryHtml.this.l(
+                OverviewSummaryHtml.this.l(
 "    <div class=\"contentContainer\">"
-                    );
+                );
+
+                OverviewSummaryHtml.this.l(
+"      <h1>ANT Library Overview</h1>"
+                );
+
+                for (AntTypeGroup typeGroup : antTypeGroups) {
+
+                    if (typeGroup.types.isEmpty()) continue;
 
                     OverviewSummaryHtml.this.l(
-"      <h1>ANT Library Overview</h1>"
+"    <h2>" + typeGroup.typeGroupHeading + " summary</h2>",
+"    <dl>"
                     );
-
-                    for (AntTypeGroup typeGroup : antTypeGroups) {
-
-                        if (typeGroup.types.isEmpty()) continue;
-
-                        OverviewSummaryHtml.this.l(
-"      <h2>" + typeGroup.typeGroupHeading + " summary</h2>",
-"      <dl>"
-                        );
-                        for (final AntType antType : typeGroup.types) {
-                            try {
-                                OverviewSummaryHtml.this.l(
-"        <dt><code>" + html.makeLink(
+                    for (final AntType antType : typeGroup.types) {
+                        try {
+                            OverviewSummaryHtml.this.l(
+"      <dt><code>" + html.makeLink(
     rootDoc,
     antType.classDoc,
     false, // plain
@@ -88,22 +85,21 @@ class OverviewSummaryHtml extends AbstractClassFrameHtml {
     null,  // target
     rootDoc
 ) + "</code></dt>",
-"        <dd>" + html.fromTags(
+"      <dd>" + html.fromTags(
     antType.classDoc.firstSentenceTags(), // tags
     antType.classDoc,                     // ref
     rootDoc                // rootDoc
 ) + "</dd>"
-                                );
-                            } catch (Longjump l) {}
-                        }
-                        OverviewSummaryHtml.this.l(
-"      </dl>"
-                        );
+                            );
+                        } catch (Longjump l) {}
                     }
                     OverviewSummaryHtml.this.l(
-"    </div>"
+"    </dl>"
                     );
                 }
+                OverviewSummaryHtml.this.l(
+"    </div>"
+                );
             }
         );
     }

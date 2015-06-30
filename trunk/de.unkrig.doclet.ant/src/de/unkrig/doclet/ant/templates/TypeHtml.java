@@ -75,37 +75,35 @@ class TypeHtml extends AbstractClassFrameHtml {
         super.rClassFrameHtml(
             typeGroup.typeTitleMf.format(new String[] { antType.name }), // title
             options,                                                     // options
-            "../stylesheet.css",                                         // stylesheetLink
+            new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
             new String[] { "nav1", AbstractClassFrameHtml.DISABLED },    // nav1
             new String[] { "nav2", AbstractClassFrameHtml.DISABLED },    // nav2
             new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
             new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
             new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5
             new String[] { "nav6", AbstractClassFrameHtml.DISABLED },    // nav6
-            new Runnable() {
-
-                @Override public void
-                run() {
-                    String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
-                    String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
-                    TypeHtml.this.l(
+            () -> {
+                String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
+                String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
+                TypeHtml.this.l(
 "<div class=\"header\">",
 "  <div class=\"subTitle\">" + HtmlTemplate.esc(typeGroup.typeGroupHeading) + "</div>",
 "  <h2 title=\"" + typeTitle + "\" class=\"title\">" + typeHeading +  "</h2>",
 "</div>",
-"<div class=\"contentContainer\">"
-                    );
+"<div class=\"contentContainer\">",
+"  <div class=\"description\">"
+                );
 
-                    final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
+                final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
 
-                    try {
-                        TypeHtml.this.printType(antType, html, rootDoc, seenTypes);
-                    } catch (Longjump l) {}
+                try {
+                    TypeHtml.this.printType(antType, html, rootDoc, seenTypes);
+                } catch (Longjump l) {}
 
-                    TypeHtml.this.l(
+                TypeHtml.this.l(
+"  </div>",
 "</div>"
-                    );
-                }
+                );
             }
         );
     }
