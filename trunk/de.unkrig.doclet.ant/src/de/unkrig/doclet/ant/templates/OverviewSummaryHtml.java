@@ -47,11 +47,11 @@ class OverviewSummaryHtml extends AbstractClassFrameHtml {
     render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, final Options options, final Html html) {
 
         super.rClassFrameHtml(
-            "Overview",                                                  // title
+            "Overview",                                                  // windowTitle
             options,                                                     // options
             new String[] { "stylesheet.css" },                           // stylesheetLinks
             new String[] { "nav1", AbstractClassFrameHtml.DISABLED },    // nav1
-            new String[] { "nav2", AbstractClassFrameHtml.DISABLED },    // nav2
+            new String[] { "nav2" },                                     // nav2
             new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
             new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
             new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5

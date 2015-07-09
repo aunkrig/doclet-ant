@@ -73,11 +73,11 @@ class TypeHtml extends AbstractClassFrameHtml {
     ) {
 
         super.rClassFrameHtml(
-            typeGroup.typeTitleMf.format(new String[] { antType.name }), // title
+            typeGroup.typeTitleMf.format(new String[] { antType.name }), // windowTitle
             options,                                                     // options
             new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
             new String[] { "nav1", AbstractClassFrameHtml.DISABLED },    // nav1
-            new String[] { "nav2", AbstractClassFrameHtml.DISABLED },    // nav2
+            new String[] { "nav2" },                                     // nav2
             new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
             new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
             new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5
