@@ -56,10 +56,11 @@ import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.HtmlTemplate;
 import de.unkrig.notemplate.javadocish.Options;
-import de.unkrig.notemplate.javadocish.templates.AbstractClassFrameHtml;
+import de.unkrig.notemplate.javadocish.templates.AbstractRightFrameHtml;
+
 
 public
-class TypeHtml extends AbstractClassFrameHtml {
+class TypeHtml extends AbstractRightFrameHtml {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
@@ -72,16 +73,16 @@ class TypeHtml extends AbstractClassFrameHtml {
         Options            options
     ) {
 
-        super.rClassFrameHtml(
+        super.rRightFrameHtml(
             typeGroup.typeTitleMf.format(new String[] { antType.name }), // windowTitle
             options,                                                     // options
             new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
-            new String[] { "nav1", AbstractClassFrameHtml.DISABLED },    // nav1
+            new String[] { "nav1", AbstractRightFrameHtml.DISABLED },    // nav1
             new String[] { "nav2" },                                     // nav2
-            new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
-            new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
-            new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5
-            new String[] { "nav6", AbstractClassFrameHtml.DISABLED },    // nav6
+            new String[] { "nav3", AbstractRightFrameHtml.DISABLED },    // nav3
+            new String[] { "nav4", AbstractRightFrameHtml.DISABLED },    // nav4
+            new String[] { "nav5", AbstractRightFrameHtml.DISABLED },    // nav5
+            new String[] { "nav6", AbstractRightFrameHtml.DISABLED },    // nav6
             () -> {
                 String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
                 String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
@@ -111,43 +112,43 @@ class TypeHtml extends AbstractClassFrameHtml {
     private void
     printType(final AntType antType, final Html html, final RootDoc rootDoc, Set<ClassDoc> seenTypes)
     throws Longjump {
-
-        this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
-
-        MethodDoc characterData = antType.characterData;
-        if (characterData != null) {
-            this.l(
-"",
-"    <h3>Text between start and end tag</h3>",
-"",
-"    <dl>"
-            );
-            this.printCharacterData(characterData, html, rootDoc);
-            this.l(
-"    </dl>"
-            );
-        }
-
-        if (!antType.attributes.isEmpty()) {
-            this.l(
-"",
-"    <h3>Attributes</h3>",
-"",
-"    <p>Default values are <u>underlined</u>.</p>",
-""
-            );
-            this.printAttributes(antType.attributes, html, rootDoc);
-        }
-
-        List<AntSubelement> subelements = antType.subelements;
-        if (!subelements.isEmpty()) {
-            this.l(
-"",
-"    <h3>Subelements</h3>",
-""
-            );
-            this.printSubelements(antType.classDoc, subelements, html, rootDoc, seenTypes);
-        }
+//
+//        this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
+//
+//        MethodDoc characterData = antType.characterData;
+//        if (characterData != null) {
+//            this.l(
+//"",
+//"    <h3>Text between start and end tag</h3>",
+//"",
+//"    <dl>"
+//            );
+//            this.printCharacterData(characterData, html, rootDoc);
+//            this.l(
+//"    </dl>"
+//            );
+//        }
+//
+//        if (!antType.attributes.isEmpty()) {
+//            this.l(
+//"",
+//"    <h3>Attributes</h3>",
+//"",
+//"    <p>Default values are <u>underlined</u>.</p>",
+//""
+//            );
+//            this.printAttributes(antType.attributes, html, rootDoc);
+//        }
+//
+//        List<AntSubelement> subelements = antType.subelements;
+//        if (!subelements.isEmpty()) {
+//            this.l(
+//"",
+//"    <h3>Subelements</h3>",
+//""
+//            );
+//            this.printSubelements(antType.classDoc, subelements, html, rootDoc, seenTypes);
+//        }
     }
 
     private void
