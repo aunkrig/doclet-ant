@@ -36,26 +36,26 @@ import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.javadocish.Options;
-import de.unkrig.notemplate.javadocish.templates.AbstractClassFrameHtml;
+import de.unkrig.notemplate.javadocish.templates.AbstractRightFrameHtml;
 
 public
-class OverviewSummaryHtml extends AbstractClassFrameHtml {
+class OverviewSummaryHtml extends AbstractRightFrameHtml {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
     public void
     render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, final Options options, final Html html) {
 
-        super.rClassFrameHtml(
+        super.rRightFrameHtml(
             "Overview",                                                  // windowTitle
             options,                                                     // options
             new String[] { "stylesheet.css" },                           // stylesheetLinks
-            new String[] { "nav1", AbstractClassFrameHtml.DISABLED },    // nav1
+            new String[] { "nav1", AbstractRightFrameHtml.DISABLED },    // nav1
             new String[] { "nav2" },                                     // nav2
-            new String[] { "nav3", AbstractClassFrameHtml.DISABLED },    // nav3
-            new String[] { "nav4", AbstractClassFrameHtml.DISABLED },    // nav4
-            new String[] { "nav5", AbstractClassFrameHtml.DISABLED },    // nav5
-            new String[] { "nav6", AbstractClassFrameHtml.DISABLED },    // nav6
+            new String[] { "nav3", AbstractRightFrameHtml.DISABLED },    // nav3
+            new String[] { "nav4", AbstractRightFrameHtml.DISABLED },    // nav4
+            new String[] { "nav5", AbstractRightFrameHtml.DISABLED },    // nav5
+            new String[] { "nav6", AbstractRightFrameHtml.DISABLED },    // nav6
             () -> {                                                      // renderBody
 
                 OverviewSummaryHtml.this.l(

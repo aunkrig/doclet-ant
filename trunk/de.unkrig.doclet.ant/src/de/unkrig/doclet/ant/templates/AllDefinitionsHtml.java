@@ -10,14 +10,14 @@ import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.javadocish.Options;
-import de.unkrig.notemplate.javadocish.templates.AbstractPackageFrameHtml;
+import de.unkrig.notemplate.javadocish.templates.AbstractBottomLeftFrameHtml;
 
-public class AllDefinitionsHtml extends AbstractPackageFrameHtml {
+public class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
 
     public void
     render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
 
-        super.rPackageFrameHtml(
+        super.rBottomLeftFrameHtml(
             "All types",                       // heading
             "overview-summary.html",           // headingLink
             options,                           // options
