@@ -458,11 +458,7 @@ class AntDoclet {
         NoTemplate.render(
             IndexHtml.class,
             new File(this.options.destination, "index.html"),
-            new ConsumerWhichThrows<IndexHtml, RuntimeException>() {
-
-                @Override public void
-                consume(IndexHtml indexHtml) throws RuntimeException { indexHtml.render(AntDoclet.this.options); }
-            }
+            (IndexHtml indexHtml) -> { indexHtml.render(AntDoclet.this.options); }
         );
 
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -594,12 +590,8 @@ class AntDoclet {
         NoTemplate.render(
             AllDefinitionsHtml.class,
             new File(this.options.destination, "alldefinitions-frame.html"),
-            new ConsumerWhichThrows<AllDefinitionsHtml, RuntimeException>() {
-
-                @Override public void
-                consume(AllDefinitionsHtml allDefinitionsHtml) throws RuntimeException {
-                    allDefinitionsHtml.render(antTypeGroups, AntDoclet.this.rootDoc, AntDoclet.this.options, html);
-                }
+            (AllDefinitionsHtml allDefinitionsHtml) -> {
+                allDefinitionsHtml.render(antTypeGroups, AntDoclet.this.rootDoc, AntDoclet.this.options, html);
             }
         );
 
@@ -608,12 +600,8 @@ class AntDoclet {
         NoTemplate.render(
             OverviewSummaryHtml.class,
             new File(this.options.destination, "overview-summary.html"),
-            new ConsumerWhichThrows<OverviewSummaryHtml, RuntimeException>() {
-
-                @Override public void
-                consume(OverviewSummaryHtml overviewSummaryHtml) throws RuntimeException {
-                    overviewSummaryHtml.render(antTypeGroups, AntDoclet.this.rootDoc, AntDoclet.this.options, html);
-                }
+            (OverviewSummaryHtml overviewSummaryHtml) -> {
+                overviewSummaryHtml.render(antTypeGroups, AntDoclet.this.rootDoc, AntDoclet.this.options, html);
             }
         );
     }
