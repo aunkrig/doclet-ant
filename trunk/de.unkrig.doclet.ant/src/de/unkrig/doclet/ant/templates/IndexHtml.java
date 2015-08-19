@@ -35,15 +35,15 @@ class IndexHtml extends AbstractIndexHtml {
     public void
     render(Options options) {
         super.rIndex(
-            null,                                                 // topLeftFrameName
-            null,                                                 // topLeftFrameLink
-            null,                                                 // topLeftFrameTitle
-            "antlibFrame",                                        // leftFrameName
-            "alldefinitions-frame.html",                          // leftFrameLink
-            "All definitions of the antlib",                      // leftFrameTitle
-            "classFrame",                                         // rightFrameName
-            "overview-summary.html",                              // rightFrameLink
-            "Antlib, type, macro, preset and script definitions", // rightFrameTitle
+            null,                                                  // topLeftFrameName
+            null,                                                  // topLeftFrameLink
+            null,                                                  // topLeftFrameTitle
+            "antlibFrame",                                         // bottomLeftFrameName
+            "alldefinitions-frame.html",                           // bottomLeftFrameLink
+            "All definitions of the antlib",                       // bottomLeftFrameTitle
+            "classFrame",                                          // rightFrameName
+            "overview-summary.html",                               // rightFrameLink
+            "Antlib, type, macro, preset and script descriptions", // rightFrameTitle
             options
         );
     }
