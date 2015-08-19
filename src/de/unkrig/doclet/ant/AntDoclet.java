@@ -108,7 +108,7 @@ import de.unkrig.notemplate.javadocish.Options;
  *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
  * </dl>
  */
-public final
+public
 class AntDoclet {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
@@ -216,6 +216,10 @@ class AntDoclet {
          * E.g. {@code "tasks"}
          */
         final String name;
+
+        /**
+         * The ANT types that comprise the group.
+         */
         public final List<AntType> types;
 
         /**
@@ -347,6 +351,7 @@ class AntDoclet {
     public static int
     optionLength(String option) {
 
+        // Options that go into the "Options" object:
         if ("-d".equals(option))           return 2;
         if ("-windowtitle".equals(option)) return 2;
         if ("-doctitle".equals(option))    return 2;
@@ -356,6 +361,7 @@ class AntDoclet {
         if ("-bottom".equals(option))      return 2;
         if ("-notimestamp".equals(option)) return 1;
 
+        // "Other" options:
         if ("-antlib-file".equals(option)) return 2;
         if ("-link".equals(option))        return 2;
         if ("-linkoffline".equals(option)) return 3;
