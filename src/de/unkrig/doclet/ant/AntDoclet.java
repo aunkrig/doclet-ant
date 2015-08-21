@@ -29,7 +29,6 @@ package de.unkrig.doclet.ant;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.MessageFormat;
@@ -67,7 +66,6 @@ import de.unkrig.commons.doclet.Tags;
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.doclet.html.Html.LinkMaker;
 import de.unkrig.commons.io.IoUtil;
-import de.unkrig.commons.io.LineUtil;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
@@ -416,13 +414,13 @@ class AntDoclet {
             } else
             if ("-link".equals(option[0])) {
                 URL targetUrl = new URL(option[1] + '/');
-                AntDoclet.readExternalJavadocs(targetUrl, targetUrl, externalJavadocs, rootDoc);
+                Docs.readExternalJavadocs(targetUrl, targetUrl, externalJavadocs, rootDoc);
             } else
             if ("-linkoffline".equals(option[0])) {
                 URL targetUrl      = new URL(option[1] + '/');
                 URL packageListUrl = new URL(option[2] + '/');
 
-                AntDoclet.readExternalJavadocs(targetUrl, packageListUrl, externalJavadocs, rootDoc);
+                Docs.readExternalJavadocs(targetUrl, packageListUrl, externalJavadocs, rootDoc);
             } else
             {
 
@@ -803,39 +801,6 @@ class AntDoclet {
             AntDoclet.attributesOf(classDoc, rootDoc),
             AntDoclet.subelementsOf(classDoc, rootDoc)
         );
-    }
-
-    /**
-     * Reads package names from "<var>packageListUrl</var>/package-list" and puts them into the {@code
-     * externalJavadocs} map.
-     */
-    private static void
-    readExternalJavadocs(
-        URL              targetUrl,
-        URL              packageListUrl,
-        Map<String, URL> externalJavadocs,
-        RootDoc          rootDoc
-    ) throws IOException {
-
-        List<String> packageNames = LineUtil.readAllLines(
-            new InputStreamReader(new URL(packageListUrl, "package-list").openStream()),
-            true                                                                         // closeReader
-        );
-
-        for (String packageName : packageNames) {
-            URL prev = externalJavadocs.put(packageName, targetUrl);
-            if (prev != null && !prev.equals(targetUrl)) {
-                rootDoc.printError((
-                    "Inconsistent offline links: Package '"
-                    + packageName
-                    + "' was first linked to '"
-                    + prev
-                    + "', now to '"
-                    + targetUrl
-                    + "'"
-                ));
-            }
-        }
     }
 
     /**@return The given <var>nodeList</var>, wrapped as an {@link Iterable} */
