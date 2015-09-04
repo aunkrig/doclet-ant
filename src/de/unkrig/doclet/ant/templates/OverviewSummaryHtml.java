@@ -88,7 +88,7 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
 "      <dd>" + html.fromTags(
     antType.classDoc.firstSentenceTags(), // tags
     antType.classDoc,                     // ref
-    rootDoc                // rootDoc
+    rootDoc                               // rootDoc
 ) + "</dd>"
                             );
                         } catch (Longjump l) {}
