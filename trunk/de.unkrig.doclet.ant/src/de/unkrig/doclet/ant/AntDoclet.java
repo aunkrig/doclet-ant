@@ -261,15 +261,19 @@ class AntDoclet {
         }
     }
 
+    /**
+     * Representation of an "ANT type", see <a href="http://ant.apache.org/manual/index.html">Concepts and Types</a>.
+     * (An ANT task is a special case of an ANT type.)
+     */
     public static final
     class AntType {
 
-        public final String               name;
-        public final ClassDoc             classDoc;
-        @Nullable private ClassDoc        adaptTo;
-        @Nullable public final MethodDoc  characterData;
-        public final List<AntAttribute>   attributes;
-        public final List<AntSubelement>  subelements;
+        public final String              name;
+        public final ClassDoc            classDoc;
+        @Nullable private ClassDoc       adaptTo;
+        @Nullable public final MethodDoc characterData;
+        public final List<AntAttribute>  attributes;
+        public final List<AntSubelement> subelements;
 
         /**
          * @param adaptTo       The value of the "{@code adaptTo="..."}" attribute, see <a
@@ -300,6 +304,9 @@ class AntDoclet {
         }
     }
 
+    /**
+     * Representation of an attribute of an {@link AntType ANT type}.
+     */
     public static final
     class AntAttribute {
 
@@ -323,6 +330,10 @@ class AntDoclet {
         }
     }
 
+    /**
+     * Representation of a subelement of an ANT type (described in the ANT documentation as "Parameters specified as
+     * nested elements").
+     */
     public static final
     class AntSubelement {
 
@@ -435,7 +446,7 @@ class AntDoclet {
         return true;
     }
 
-    private void
+    void
     start2() throws IOException, ParserConfigurationException, SAXException {
 
         IoUtil.copyResource(
