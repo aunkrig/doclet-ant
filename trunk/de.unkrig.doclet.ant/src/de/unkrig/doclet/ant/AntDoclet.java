@@ -446,6 +446,9 @@ class AntDoclet {
         return true;
     }
 
+    /**
+     * Generates the ANT documentation for this configured object.
+     */
     void
     start2() throws IOException, ParserConfigurationException, SAXException {
 
