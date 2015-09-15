@@ -37,9 +37,15 @@ import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractBottomLeftFrameHtml;
 
+/**
+ * Renders the contents of the "All Definitions" frame.
+ */
 public
 class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
 
+    /**
+     * Renders the contents of the "All Definitions" frame.
+     */
     public void
     render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
 
