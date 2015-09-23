@@ -82,11 +82,11 @@ class TypeHtml extends AbstractRightFrameHtml {
             options,                                                     // options
             new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
             new String[] {                                               // nav1
-                "Overview",          home + "../overview-summary.html",
-                "Task",              typeGroup.typeGroupHeading.equals("Tasks")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
-                "Type",              typeGroup.typeGroupHeading.equals("Types")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
-                "Chainable readers", typeGroup.typeGroupHeading.equals("Chainable readers") ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
-                "Index",             home + "index-all.html",
+                "Overview",         home + "../overview-summary.html",
+                "Task",             typeGroup.typeGroupHeading.equals("Tasks")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Type",             typeGroup.typeGroupHeading.equals("Types")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Chainable reader", typeGroup.typeGroupHeading.equals("Chainable readers") ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Index",            home + "index-all.html",
             },
             new String[] {                                               // nav2
                 TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupHeading, home, atwc.previous()),
