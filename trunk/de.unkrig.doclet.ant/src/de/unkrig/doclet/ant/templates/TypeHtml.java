@@ -49,6 +49,7 @@ import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
+import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.AntDoclet;
 import de.unkrig.doclet.ant.AntDoclet.AntAttribute;
 import de.unkrig.doclet.ant.AntDoclet.AntSubelement;
@@ -66,23 +67,44 @@ class TypeHtml extends AbstractRightFrameHtml {
 
     public void
     render(
-        final AntTypeGroup typeGroup,
-        final AntType      antType,
-        final Html         html,
-        final RootDoc      rootDoc,
-        Options            options
+        final AntTypeGroup                typeGroup,
+        final ElementWithContext<AntType> atwc,
+        final Html                        html,
+        final RootDoc                     rootDoc,
+        Options                           options
     ) {
+        AntType antType = atwc.current();
+
+        String home = "";
 
         super.rRightFrameHtml(
             typeGroup.typeTitleMf.format(new String[] { antType.name }), // windowTitle
             options,                                                     // options
             new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
-            new String[] { "nav1", AbstractRightFrameHtml.DISABLED },    // nav1
-            new String[] { "nav2" },                                     // nav2
-            new String[] { "nav3", AbstractRightFrameHtml.DISABLED },    // nav3
-            new String[] { "nav4", AbstractRightFrameHtml.DISABLED },    // nav4
-            new String[] { "nav5", AbstractRightFrameHtml.DISABLED },    // nav5
-            new String[] { "nav6", AbstractRightFrameHtml.DISABLED },    // nav6
+            new String[] {                                               // nav1
+                "Overview",          home + "../overview-summary.html",
+                "Task",              typeGroup.typeGroupHeading.equals("Tasks")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Type",              typeGroup.typeGroupHeading.equals("Types")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Chainable readers", typeGroup.typeGroupHeading.equals("Chainable readers") ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Index",             home + "index-all.html",
+            },
+            new String[] {                                               // nav2
+                TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupHeading, home, atwc.previous()),
+                TypeHtml.antTypeLink("Next " + typeGroup.typeGroupHeading, home, atwc.next()),
+            },
+            new String[] {                                               // nav3
+                "Frames",    home + "../index.html?tasks/" + antType.name + ".html",
+                "No Frames", antType.name + ".html",
+            },
+            new String[] {                                               // nav4
+                "All Classes", home + "alldefinitions-noframe.html",
+            },
+            null,                                                        // nav5
+            new String[] {                                               // nav6
+                "Character data", antType.characterData == null ? AbstractRightFrameHtml.DISABLED : "#character_data_detail",
+                "Attributes",     antType.attributes.isEmpty()  ? AbstractRightFrameHtml.DISABLED : "#attribute_detail",
+                "Subelements",    antType.subelements.isEmpty() ? AbstractRightFrameHtml.DISABLED : "#subelement_detail",
+            },
             () -> {
                 String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
                 String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
@@ -109,46 +131,59 @@ class TypeHtml extends AbstractRightFrameHtml {
         );
     }
 
+    private static String
+    antTypeLink(String labelHtml, String home, @Nullable AntType antType) {
+
+        if (antType == null) return labelHtml;
+
+        return (
+            "<a href=\""
+            + antType.name
+            + ".html\"><span class=\"strong\">"
+            + labelHtml
+            + "</span></a>"
+        );
+    }
+
     private void
     printType(final AntType antType, final Html html, final RootDoc rootDoc, Set<ClassDoc> seenTypes)
     throws Longjump {
-//
-//        this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
-//
-//        MethodDoc characterData = antType.characterData;
-//        if (characterData != null) {
-//            this.l(
-//"",
-//"    <h3>Text between start and end tag</h3>",
-//"",
-//"    <dl>"
-//            );
-//            this.printCharacterData(characterData, html, rootDoc);
-//            this.l(
-//"    </dl>"
-//            );
-//        }
-//
-//        if (!antType.attributes.isEmpty()) {
-//            this.l(
-//"",
-//"    <h3>Attributes</h3>",
-//"",
-//"    <p>Default values are <u>underlined</u>.</p>",
-//""
-//            );
-//            this.printAttributes(antType.attributes, html, rootDoc);
-//        }
-//
-//        List<AntSubelement> subelements = antType.subelements;
-//        if (!subelements.isEmpty()) {
-//            this.l(
-//"",
-//"    <h3>Subelements</h3>",
-//""
-//            );
-//            this.printSubelements(antType.classDoc, subelements, html, rootDoc, seenTypes);
-//        }
+        this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
+
+        MethodDoc characterData = antType.characterData;
+        if (characterData != null) {
+            this.l(
+"",
+"    <h3>Text between start and end tag</h3>",
+"",
+"    <dl>"
+            );
+            this.printCharacterData(characterData, html, rootDoc);
+            this.l(
+"    </dl>"
+            );
+        }
+
+        if (!antType.attributes.isEmpty()) {
+            this.l(
+"",
+"    <h3>Attributes</h3>",
+"",
+"    <p>Default values are <u>underlined</u>.</p>",
+""
+            );
+            this.printAttributes(antType.attributes, html, rootDoc);
+        }
+
+        List<AntSubelement> subelements = antType.subelements;
+        if (!subelements.isEmpty()) {
+            this.l(
+"",
+"    <h3>Subelements</h3>",
+""
+            );
+            this.printSubelements(antType.classDoc, subelements, html, rootDoc, seenTypes);
+        }
     }
 
     private void

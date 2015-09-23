@@ -74,6 +74,7 @@ import de.unkrig.commons.lang.protocol.Mappings;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.CamelCase;
 import de.unkrig.commons.util.collections.IterableUtil;
+import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.templates.AllDefinitionsHtml;
 import de.unkrig.doclet.ant.templates.IndexHtml;
 import de.unkrig.doclet.ant.templates.OverviewSummaryHtml;
@@ -560,7 +561,8 @@ class AntDoclet {
 
         for (final AntTypeGroup typeGroup : antTypeGroups) {
 
-            for (final AntType antType : typeGroup.types) {
+            for (final ElementWithContext<AntType> atwc : IterableUtil.iterableWithContext(typeGroup.types)) {
+                AntType antType = atwc.current();
 
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
@@ -575,7 +577,7 @@ class AntDoclet {
 
                         @Override public void
                         consume(TypeHtml typeHtml) throws RuntimeException {
-                            typeHtml.render(typeGroup, antType, html, AntDoclet.this.rootDoc, AntDoclet.this.options);
+                            typeHtml.render(typeGroup, atwc, html, AntDoclet.this.rootDoc, AntDoclet.this.options);
                         }
                     }
                 );
