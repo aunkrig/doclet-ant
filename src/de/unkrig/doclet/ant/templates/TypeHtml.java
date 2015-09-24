@@ -59,7 +59,6 @@ import de.unkrig.notemplate.HtmlTemplate;
 import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractRightFrameHtml;
 
-
 public
 class TypeHtml extends AbstractRightFrameHtml {
 

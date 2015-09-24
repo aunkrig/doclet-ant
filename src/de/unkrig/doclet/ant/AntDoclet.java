@@ -105,6 +105,8 @@ import de.unkrig.notemplate.javadocish.Options;
  *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.</dd>
  *   <dt>{@code -windowtitle} <var>text</var></dt>
  *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
+ *   <dt>{@code -theme JAVA7|JAVA8}</dt>
+ *   <dd>Which style sheets and resources to use.</dd>
  * </dl>
  */
 public
@@ -118,6 +120,8 @@ class AntDoclet {
     private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
     private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
 
+    private enum Theme { JAVA7, JAVA8 }
+
     private RootDoc                                rootDoc;
     private final Options                          options;
     private final File                             antlibFile;
@@ -125,19 +129,22 @@ class AntDoclet {
 
     private final Mapping<ClassDoc, URL>                                         externalAntdocs;
     private final Mapping<String /*qualifiedClassName*/, String /*antTypeName*/> knownTypes;
+    private Theme theme;
 
     public
     AntDoclet(
         RootDoc          rootDoc,
         Options          options,
         File             antlibFile,
-        Map<String, URL> externalJavadocs
+        Map<String, URL> externalJavadocs,
+        Theme            theme
     ) {
 
         this.rootDoc          = rootDoc;
         this.options          = options;
         this.antlibFile       = antlibFile;
         this.externalJavadocs = externalJavadocs;
+        this.theme            = theme;
 
         {
             final Properties p = new Properties();
@@ -375,6 +382,7 @@ class AntDoclet {
         if ("-antlib-file".equals(option)) return 2;
         if ("-link".equals(option))        return 2;
         if ("-linkoffline".equals(option)) return 3;
+        if ("-theme".equals(option))       return 2;
 
         return 0;
     }
@@ -388,6 +396,7 @@ class AntDoclet {
 
         File                                              antlibFile       = new File("antlib.xml");
         final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<String, URL>();
+        Theme                                             theme            = Theme.JAVA8;
 
         Options options   = new Options();
         options.generator = "the ANT doclet http://doclet.unkrig.de";
@@ -425,14 +434,51 @@ class AntDoclet {
                 antlibFile = new File(option[1]);
             } else
             if ("-link".equals(option[0])) {
-                URL targetUrl = new URL(option[1] + '/');
-                Docs.readExternalJavadocs(targetUrl, targetUrl, externalJavadocs, rootDoc);
+
+                String externalDocumentationUrl = option[1];
+
+                if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
+
+                URL externalDocumentationUrl2 = new URL(
+                    new URL("file", null, -1, options.destination.toString()),
+                    externalDocumentationUrl
+                );
+
+                Docs.readExternalJavadocs(
+                    externalDocumentationUrl2, // targetUrl
+                    externalDocumentationUrl2, // packageListUrl
+                    externalJavadocs,          // externalJavadocs
+                    rootDoc
+                );
             } else
             if ("-linkoffline".equals(option[0])) {
-                URL targetUrl      = new URL(option[1] + '/');
-                URL packageListUrl = new URL(option[2] + '/');
 
-                Docs.readExternalJavadocs(targetUrl, packageListUrl, externalJavadocs, rootDoc);
+                String externalDocumentationUrl = option[1];
+                String packageListLocation      = option[2];
+
+                if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
+                if (!packageListLocation.endsWith("/"))      packageListLocation      += "/";
+
+                URL externalDocumentationUrl2 = new URL(
+                    new URL("file", null, -1, options.destination.toString()),
+                    externalDocumentationUrl
+                );
+
+                URL packageListUrl = (
+                    packageListLocation.startsWith("http.") || packageListLocation.startsWith("file:")
+                    ? new URL(new URL("file", null, -1, System.getProperty("user.dir")), packageListLocation)
+                    : new URL("file", null, -1, packageListLocation)
+                );
+
+                Docs.readExternalJavadocs(
+                    externalDocumentationUrl2, // targetUrl
+                    packageListUrl,       // packageListUrl
+                    externalJavadocs,     // externalJavadocs
+                    rootDoc
+                );
+            } else
+            if ("-theme".equals(option[0])) {
+                theme = Theme.valueOf(option[1]);
             } else
             {
 
@@ -442,7 +488,7 @@ class AntDoclet {
             }
         }
 
-        new AntDoclet(rootDoc, options, antlibFile, externalJavadocs).start2();
+        new AntDoclet(rootDoc, options, antlibFile, externalJavadocs, theme).start2();
 
         return true;
     }
@@ -453,12 +499,36 @@ class AntDoclet {
     void
     start2() throws IOException, ParserConfigurationException, SAXException {
 
-        IoUtil.copyResource(
-            AntDoclet.class.getClassLoader(),
-            "de/unkrig/doclet/ant/templates/stylesheet.css",
-            new File(this.options.destination, "stylesheet.css"),
-            true                                                  // createMissingParentDirectories
-        );
+        switch (this.theme) {
+
+        case JAVA7:
+            String resourceNamePrefix = "de/unkrig/doclet/ant/theme/java7/";
+            for (String resourceNameSuffix : new String[] {
+                "stylesheet.css",
+                "resources/background.gif",
+                "resources/tab.gif",
+                "resources/titlebar_end.gif",
+                "resources/titlebar.gif",
+            }) {
+                File file = new File(this.options.destination, resourceNameSuffix);
+                IoUtil.copyResource(
+                    AntDoclet.class.getClassLoader(),
+                    resourceNamePrefix + resourceNameSuffix,
+                    file,
+                    true                                                  // createMissingParentDirectories
+                );
+            }
+            break;
+
+        case JAVA8:
+            IoUtil.copyResource(
+                AntDoclet.class.getClassLoader(),
+                "de/unkrig/doclet/ant/theme/java8/stylesheet.css",
+                new File(this.options.destination, "stylesheet.css"),
+                true                                                  // createMissingParentDirectories
+            );
+            break;
+        }
 
         IoUtil.copyResource(
             AntDoclet.class.getClassLoader(),
@@ -661,7 +731,7 @@ class AntDoclet {
                     for (AntTypeGroup tg : antTypeGroups) {
                         for (AntType t : tg.types) {
 
-                            if (t.classDoc != toClass) continue;
+//                            if (t.classDoc != toClass) continue;
 
                             // Link to an attribute (of the same or a different ANT type)?
                             for (AntAttribute a : t.attributes) {
@@ -695,7 +765,7 @@ class AntDoclet {
                         }
                     }
 
-                    rootDoc.printError(from.position(), (
+                    rootDoc.printWarning(from.position(), (
                         "Linking from '"
                         + from
                         + "' to '"
@@ -704,7 +774,7 @@ class AntDoclet {
                         + toMethod
                         + "' is not an attribute setter nor a subelement adder/creator"
                     ));
-                    throw new Longjump();
+                    return null;
                 }
 
                 // Leave references to other elements, e.g. enum constants or constants, "unlinked", i.e. print
@@ -788,7 +858,7 @@ class AntDoclet {
             }
             classDoc = rootDoc.classNamed(classnameAttribute);
             if (classDoc == null) {
-                rootDoc.printError("Class '" + classnameAttribute + "' not found for <anttask> '" + taskName + "'");
+                rootDoc.printError("Class '" + classnameAttribute + "' not found for  <" + taskName + ">");
                 throw new Longjump();
             }
         }
@@ -803,7 +873,7 @@ class AntDoclet {
 
             adaptTo = rootDoc.classNamed(adaptToAttribute);
             if (adaptTo == null) {
-                rootDoc.printError("Class '" + adaptToAttribute + "' not found for <anttask> '" + taskName + "'");
+                rootDoc.printError("Class '" + adaptToAttribute + "' not found for <" + taskName + ">");
                 throw new Longjump();
             }
         }
@@ -877,6 +947,8 @@ class AntDoclet {
 
         final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
         for (MethodDoc md : Docs.methods(classDoc, true, true)) {
+
+            if (!md.isPublic() || md.name().equals("setProject")) continue;
 
             String      methodName       = md.name();
             Parameter[] methodParameters = md.parameters();
