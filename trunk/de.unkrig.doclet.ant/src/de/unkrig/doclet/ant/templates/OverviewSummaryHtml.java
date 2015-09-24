@@ -47,16 +47,27 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
     render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, final Options options, final Html html) {
 
         super.rRightFrameHtml(
-            "Overview",                                                  // windowTitle
-            options,                                                     // options
-            new String[] { "stylesheet.css" },                           // stylesheetLinks
-            new String[] { "nav1", AbstractRightFrameHtml.DISABLED },    // nav1
-            new String[] { "nav2" },                                     // nav2
-            new String[] { "nav3", AbstractRightFrameHtml.DISABLED },    // nav3
-            new String[] { "nav4", AbstractRightFrameHtml.DISABLED },    // nav4
-            new String[] { "nav5", AbstractRightFrameHtml.DISABLED },    // nav5
-            new String[] { "nav6", AbstractRightFrameHtml.DISABLED },    // nav6
-            () -> {                                                      // renderBody
+            "Overview",                        // windowTitle
+            options,                           // options
+            new String[] { "stylesheet.css" }, // stylesheetLinks
+            new String[] {                     // nav1
+                "Overview",         AbstractRightFrameHtml.HIGHLIT,
+                "Task",             AbstractRightFrameHtml.DISABLED,
+                "Type",             AbstractRightFrameHtml.DISABLED,
+                "Chainable reader", AbstractRightFrameHtml.DISABLED,
+                "Index",            "index-all.html",
+            },
+            new String[] { "Prev", "Next" },   // nav2
+            new String[] {                     // nav3
+                "Frames",    "index.html",
+                "No Frames", "overview-summary.html",
+            },
+            new String[] {                     // nav4
+                "All Classes", "alldefinitions-noframe.html",
+            },
+            null,                              // nav5
+            null,                              // nav6
+            () -> {                            // renderBody
 
                 OverviewSummaryHtml.this.l(
 "    <div class=\"contentContainer\">"
