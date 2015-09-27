@@ -129,7 +129,7 @@ class AntDoclet {
 
     private final Mapping<ClassDoc, URL>                                         externalAntdocs;
     private final Mapping<String /*qualifiedClassName*/, String /*antTypeName*/> knownTypes;
-    private Theme theme;
+    private final Theme                                                          theme;
 
     public
     AntDoclet(
@@ -472,8 +472,8 @@ class AntDoclet {
 
                 Docs.readExternalJavadocs(
                     externalDocumentationUrl2, // targetUrl
-                    packageListUrl,       // packageListUrl
-                    externalJavadocs,     // externalJavadocs
+                    packageListUrl,            // packageListUrl
+                    externalJavadocs,          // externalJavadocs
                     rootDoc
                 );
             } else
