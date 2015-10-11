@@ -72,7 +72,7 @@ import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.lang.protocol.Mapping;
 import de.unkrig.commons.lang.protocol.Mappings;
 import de.unkrig.commons.nullanalysis.Nullable;
-import de.unkrig.commons.text.CamelCase;
+import de.unkrig.commons.text.Notations;
 import de.unkrig.commons.util.collections.IterableUtil;
 import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.templates.AllDefinitionsHtml;
@@ -115,9 +115,9 @@ class AntDoclet {
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
     private static final Pattern ADD_TEXT_METHOD_NAME   = Pattern.compile("addText");
-    private static final Pattern SET_XYZ_METHOD_NAME    = Pattern.compile("set([A-Z]\\w*)");
-    private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?([A-Z]\\w*)");
-    private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create([A-Z]\\w*)");
+    private static final Pattern SET_XYZ_METHOD_NAME    = Pattern.compile("set(?<attributeName>[A-Z]\\w*)");
+    private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?(?<attributeName>[A-Z]\\w*)"); // SUPPRESS CHECKSTYLE LineLength
+    private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create(?<attributeName>[A-Z]\\w*)");
     private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
 
     private enum Theme { JAVA7, JAVA8 }
@@ -560,7 +560,7 @@ class AntDoclet {
         // https://ant.apache.org/manual/Types/antlib.html
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
             try {
-                tasks.add(this.parseType(taskdefElement, this.rootDoc));
+                tasks.add(AntDoclet.parseType(taskdefElement, this.rootDoc));
             } catch (Longjump l) {}
         }
 
@@ -570,7 +570,7 @@ class AntDoclet {
         )) {
             AntType type;
             try {
-                type = this.parseType(typedefElement, this.rootDoc);
+                type = AntDoclet.parseType(typedefElement, this.rootDoc);
             } catch (Longjump l) {
                 continue;
             }
@@ -783,7 +783,7 @@ class AntDoclet {
             }
 
             @Override public String
-            makeDefaultLabel(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
+            makeDefaultLabel(Doc from, Doc to, RootDoc rootDoc) {
 
                 if (to instanceof ClassDoc) {
                     ClassDoc toClass = (ClassDoc) to;
@@ -837,7 +837,7 @@ class AntDoclet {
         return false;
     }
 
-    private AntType
+    private static AntType
     parseType(Element taskdefElement, RootDoc rootDoc) throws Longjump {
 
         final String taskName;
@@ -948,7 +948,7 @@ class AntDoclet {
         final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
         for (MethodDoc md : Docs.methods(classDoc, true, true)) {
 
-            if (!md.isPublic() || md.name().equals("setProject")) continue;
+            if (!md.isPublic() || "setProject".equals(md.name())) continue;
 
             String      methodName       = md.name();
             Parameter[] methodParameters = md.parameters();
@@ -958,7 +958,7 @@ class AntDoclet {
                 (m = AntDoclet.SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
                 && methodParameters.length == 1
             ) {
-                String name = CamelCase.toLowerCamelCase(m.group(1));
+                String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
                 Type   type = methodParameters[0].type();
 
                 attributes.add(new AntAttribute(name, md, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
@@ -982,7 +982,7 @@ class AntDoclet {
                 (m = AntDoclet.CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
                 && methodParameters.length == 0
             ) {
-                String name = CamelCase.toLowerCamelCase(m.group(1));
+                String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
                 Type   type = md.returnType();
 
                 subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
@@ -1000,7 +1000,7 @@ class AntDoclet {
                 && !AntDoclet.ADD_TEXT_METHOD_NAME.matcher(methodName).matches()
                 && methodParameters.length == 1
             ) {
-                String name = CamelCase.toLowerCamelCase(m.group(1));
+                String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
                 Type   type = methodParameters[0].type();
 
                 subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
