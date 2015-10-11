@@ -48,7 +48,7 @@ import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
-import de.unkrig.commons.text.CamelCase;
+import de.unkrig.commons.text.Notations;
 import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.AntDoclet;
 import de.unkrig.doclet.ant.AntDoclet.AntAttribute;
@@ -82,9 +82,21 @@ class TypeHtml extends AbstractRightFrameHtml {
             new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
             new String[] {                                               // nav1
                 "Overview",         home + "../overview-summary.html",
-                "Task",             typeGroup.typeGroupHeading.equals("Tasks")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
-                "Type",             typeGroup.typeGroupHeading.equals("Types")             ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
-                "Chainable reader", typeGroup.typeGroupHeading.equals("Chainable readers") ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED,
+                "Task",             (
+                    typeGroup.typeGroupHeading.equals("Tasks")
+                    ? AbstractRightFrameHtml.HIGHLIT
+                    : AbstractRightFrameHtml.DISABLED
+                ),
+                "Type",             (
+                    typeGroup.typeGroupHeading.equals("Types")
+                    ? AbstractRightFrameHtml.HIGHLIT
+                    : AbstractRightFrameHtml.DISABLED
+                ),
+                "Chainable reader", (
+                    typeGroup.typeGroupHeading.equals("Chainable readers")
+                    ? AbstractRightFrameHtml.HIGHLIT
+                    : AbstractRightFrameHtml.DISABLED
+                ),
                 "Index",            home + "index-all.html",
             },
             new String[] {                                               // nav2
@@ -100,9 +112,21 @@ class TypeHtml extends AbstractRightFrameHtml {
             },
             null,                                                        // nav5
             new String[] {                                               // nav6
-                "Character data", antType.characterData == null ? AbstractRightFrameHtml.DISABLED : "#character_data_detail",
-                "Attributes",     antType.attributes.isEmpty()  ? AbstractRightFrameHtml.DISABLED : "#attribute_detail",
-                "Subelements",    antType.subelements.isEmpty() ? AbstractRightFrameHtml.DISABLED : "#subelement_detail",
+                "Character data", (
+                    antType.characterData == null
+                    ? AbstractRightFrameHtml.DISABLED
+                    : "#character_data_detail"
+                ),
+                "Attributes",     (
+                    antType.attributes.isEmpty()
+                    ? AbstractRightFrameHtml.DISABLED
+                    : "#attribute_detail"
+                ),
+                "Subelements",    (
+                    antType.subelements.isEmpty()
+                    ? AbstractRightFrameHtml.DISABLED
+                    : "#subelement_detail"
+                ),
             },
             () -> {
                 String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
@@ -298,7 +322,7 @@ class TypeHtml extends AbstractRightFrameHtml {
             if ("false".equals(defaultValue) || defaultValue == null) {
                 rhs = "true|<u>false</u>";
             } else
-            if ("true".equals(defaultValue) || defaultValue == null) {
+            if ("true".equals(defaultValue)) {
                 rhs = "<u>true</u>|false";
             } else
             {
@@ -328,11 +352,11 @@ class TypeHtml extends AbstractRightFrameHtml {
             || "java.lang.Object".equals(qualifiedAttributeTypeName)
             || "de.unkrig.antcontrib.util.Regex".equals(qualifiedAttributeTypeName)
         ) {
-            rhs = "<var>" + CamelCase.toHyphenSeparated(attributeType.simpleTypeName()) + "</var>";
+            rhs = "<var>" + Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated() + "</var>";
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         } else
         if ("java.lang.String".equals(qualifiedAttributeTypeName)) {
-            rhs = "<var>" + CamelCase.toHyphenSeparated(attributeSetterParameterName) + "</var>";
+            rhs = "<var>" + Notations.fromCamelCase(attributeSetterParameterName).toLowerCaseHyphenated() + "</var>";
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         } else
         if (attributeType instanceof Doc && ((Doc) attributeType).isEnum()) {
@@ -361,23 +385,23 @@ class TypeHtml extends AbstractRightFrameHtml {
                 rhs = (
                     "<var>"
                     + html.makeLink(
-                        attribute.methodDoc,
-                        this.getSingleStringParameterConstructor(
+                        attribute.methodDoc,                                                             // from
+                        TypeHtml.getSingleStringParameterConstructor(                                    // to
                             (ClassDoc) attributeType,
                             attribute.methodDoc,
                             rootDoc
                         ),
-                        false, // plain
-                        CamelCase.toHyphenSeparated(attributeType.simpleTypeName()),
-                        null, // target
-                        rootDoc
+                        false,                                                                           // plain
+                        Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated(), // label
+                        null,                                                                            // target
+                        rootDoc                                                                          // rootDoc
                     )
                     + "</var>"
                 );
             } catch (Longjump l) {
                 rhs = (
                     "<var>"
-                    + CamelCase.toHyphenSeparated(attributeType.simpleTypeName())
+                    + Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated()
                     + "</var>"
                 );
             }
@@ -385,7 +409,7 @@ class TypeHtml extends AbstractRightFrameHtml {
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         }
 
-        boolean mandatory = this.docHasTag(attribute.methodDoc, "@ant.mandatory", rootDoc);
+        boolean mandatory = TypeHtml.docHasTag(attribute.methodDoc, "@ant.mandatory", rootDoc);
 
         if (mandatory && defaultValue != null) {
             rootDoc.printWarning(
@@ -604,9 +628,8 @@ class TypeHtml extends AbstractRightFrameHtml {
         }
     }
 
-    private ConstructorDoc
-    getSingleStringParameterConstructor(ClassDoc classDoc, Doc ref, DocErrorReporter errorReporter)
-    throws Longjump {
+    private static ConstructorDoc
+    getSingleStringParameterConstructor(ClassDoc classDoc, Doc ref, DocErrorReporter errorReporter) throws Longjump {
 
         for (ConstructorDoc cd : classDoc.constructors()) {
 
@@ -622,7 +645,7 @@ class TypeHtml extends AbstractRightFrameHtml {
         throw new Longjump();
     }
 
-    private boolean
+    private static boolean
     docHasTag(Doc doc, String kind, RootDoc rootDoc) {
 
         Tag[] tags = doc.tags(kind);
