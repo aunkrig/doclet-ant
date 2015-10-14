@@ -147,21 +147,11 @@ class AntDoclet {
         this.theme            = theme;
 
         {
-            final Properties p = new Properties();
-
-            InputStream is = this.getClass().getResourceAsStream("external-antdocs.properties");
-            assert is != null;
-            try {
-                p.load(is);
-                is.close();
-            } catch (IOException ioe) {
-                throw new ExceptionInInitializerError(ioe);
-            } finally {
-                try { is.close(); } catch (Exception e) {}
-            }
-
             Map<ClassDoc, URL> m = new HashMap<ClassDoc, URL>();
-            for (Entry<Object, Object> e : p.entrySet()) {
+
+            for (Entry<Object, Object> e : this.loadPropertiesFromResource(
+                this.getClass().getPackage().getName().replace('.', '/') + "/external-antdocs.properties"
+            ).entrySet()) {
                 String qualifiedClassName = (String) e.getKey();
                 String href               = (String) e.getValue();
 
@@ -170,8 +160,53 @@ class AntDoclet {
                     rootDoc.printError("Cannot load \"" + qualifiedClassName + "\" for external HREF");
                     continue;
                 }
+
                 try {
                     m.put(cd, new URL(href));
+                } catch (MalformedURLException mue) {
+                    throw new ExceptionInInitializerError(mue);
+                }
+            }
+
+            for (Entry<Object, Object> e : this.loadPropertiesFromResource(
+                "org/apache/tools/ant/taskdefs/defaults.properties"
+            ).entrySet()) {
+                String taskName           = (String) e.getKey();
+                String qualifiedClassName = (String) e.getValue();
+
+                ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
+                if (cd == null) {
+
+                    // "defaults.properties" declares many "optional" tasks, so let's not complain if the task is not
+                    // on the classpath.
+                    //rootDoc.printError("Cannot load task \"" + qualifiedClassName + "\" for external HREF");
+                    continue;
+                }
+
+                try {
+                    m.put(cd, new URL("http://ant.apache.org/manual/Tasks/" + taskName + ".html"));
+                } catch (MalformedURLException mue) {
+                    throw new ExceptionInInitializerError(mue);
+                }
+            }
+
+            for (Entry<Object, Object> e : this.loadPropertiesFromResource(
+                "org/apache/tools/ant/types/defaults.properties"
+            ).entrySet()) {
+                String typeName           = (String) e.getKey();
+                String qualifiedClassName = (String) e.getValue();
+
+                ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
+                if (cd == null) {
+
+                    // "defaults.properties" declares many "optional" types, so let's not complain if the type is not
+                    // on the classpath.
+                    //rootDoc.printError("Cannot load type \"" + qualifiedClassName + "\" for external HREF");
+                    continue;
+                }
+
+                try {
+                    m.put(cd, new URL("http://ant.apache.org/manual/Types/" + typeName + ".html"));
                 } catch (MalformedURLException mue) {
                     throw new ExceptionInInitializerError(mue);
                 }
@@ -210,6 +245,23 @@ class AntDoclet {
 
             this.knownTypes = Mappings.fromMap(m);
         }
+    }
+
+    private Properties
+    loadPropertiesFromResource(String resourceName) throws ExceptionInInitializerError {
+        final Properties p = new Properties();
+
+        InputStream is = this.getClass().getClassLoader().getResourceAsStream(resourceName);
+        assert is != null : resourceName;
+        try {
+            p.load(is);
+            is.close();
+        } catch (IOException ioe) {
+            throw new ExceptionInInitializerError(ioe);
+        } finally {
+            try { is.close(); } catch (Exception e) {}
+        }
+        return p;
     }
 
     /**
