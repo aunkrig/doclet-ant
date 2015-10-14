@@ -650,35 +650,35 @@ class AntDoclet {
             tasks,
             "Tasks",
             "Task \"&lt;{0}&gt;\"",
-            "Task \"<code>&lt;{0}&gt;</code>\""
+            "<code>&lt;{0}&gt;</code>"
         ));
         antTypeGroups.add(new AntTypeGroup(
             "resourceCollections",
             resourceCollections,
             "Resource collections",
             "Resource collection \"&lt;{0}&gt;\"",
-            "Resource collection \"<code>&lt;{0}&gt;</code>\""
+            "<code>&lt;{0}&gt;</code>"
         ));
         antTypeGroups.add(new AntTypeGroup(
             "chainableReaders",
             chainableReaders,
             "Chainable readers",
             "Chainable reader \"&lt;{0}&gt;\"",
-            "Chainable reader \"<code>&lt;{0}&gt;</code>\""
+            "<code>&lt;{0}&gt;</code>"
         ));
         antTypeGroups.add(new AntTypeGroup(
             "conditions",
             conditions,
             "Conditions",
             "Condition \"&lt;{0}&gt;\"",
-            "Condition \"<code>&lt;{0}&gt;</code>\""
+            "<code>&lt;{0}&gt;</code>"
         ));
         antTypeGroups.add(new AntTypeGroup(
             "otherTypes",
             otherTypes,
             "Other types",
             "Type \"&lt;{0}&gt;\"",
-            "Type \"<code>&lt;{0}&gt;</code>\""
+            "<code>&lt;{0}&gt;</code>"
         ));
 
         for (final AntTypeGroup typeGroup : antTypeGroups) {
