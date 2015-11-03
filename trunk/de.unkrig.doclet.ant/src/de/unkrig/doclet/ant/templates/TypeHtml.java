@@ -178,13 +178,9 @@ class TypeHtml extends AbstractRightFrameHtml {
             this.l(
 "",
 "    <h3>Text between start and end tag</h3>",
-"",
-"    <dl>"
+""
             );
             this.printCharacterData(characterData, html, rootDoc);
-            this.l(
-"    </dl>"
-            );
         }
 
         if (!antType.attributes.isEmpty()) {
@@ -266,13 +262,10 @@ class TypeHtml extends AbstractRightFrameHtml {
 
         // Generate character data description.
         try {
-            String
-            attributeHtmlText = html.generateFor(characterData, rootDoc);
+            String attributeHtmlText = html.generateFor(characterData, rootDoc);
 
             this.l(
-"      <dd>",
-"        " + attributeHtmlText.replaceAll("\\s+", " "),
-"      </dd>"
+"    " + attributeHtmlText.replaceAll("\\s+", " ")
             );
         } catch (Longjump l) {}
     }
