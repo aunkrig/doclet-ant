@@ -1,11 +1,11 @@
 
 .contentContainer .description dl dt {
-    margin:      10px 0px 0px 10px;
+    margin:      2px 0px 0px 10px;
     color:       #4E4E4E;
     font-size:   12px;
     font-weight: bold;
 }
 .contentContainer .description dl dd {
-    margin:      0px 0px 10px 30px;
+    margin:      3px 0px 7px 30px;
     font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
 }
