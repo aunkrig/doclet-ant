@@ -27,6 +27,9 @@
 package de.unkrig.doclet.ant.templates;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +47,7 @@ import com.sun.javadoc.RootDoc;
 import com.sun.javadoc.Tag;
 import com.sun.javadoc.Type;
 
+import de.unkrig.commons.doclet.Docs;
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.Longjump;
@@ -271,7 +275,38 @@ class TypeHtml extends AbstractRightFrameHtml {
     }
 
     private void
-    printAttribute(AntAttribute attribute, final Html html, final RootDoc rootDoc) {
+    printAttribute(
+        AntAttribute             primaryAttribute,
+        Collection<AntAttribute> alternativeAttributes,
+        final Html               html,
+        final RootDoc
+    rootDoc) {
+
+        this.l(
+"      <dt>" + attributeTerm(primaryAttribute, html, rootDoc) + "</dt>"
+        );
+        
+        for (AntAttribute a : alternativeAttributes) {
+            this.l(
+"      <dt>" + attributeTerm(a, html, rootDoc) + "</dt>"
+            );
+        }
+
+        // Generate attribute description.
+        try {
+            String
+            attributeHtmlText = html.generateFor(primaryAttribute.methodDoc, rootDoc);
+
+            this.l(
+"      <dd>",
+"        " + attributeHtmlText.replaceAll("\\s+", " "),
+"      </dd>"
+            );
+        } catch (Longjump l) {}
+    }
+
+    private static String
+    attributeTerm(AntAttribute attribute, Html html, RootDoc rootDoc) {
 
         String defaultValueHtmlText = TypeHtml.getTagOfDoc(
             attribute.methodDoc,
@@ -338,8 +373,7 @@ class TypeHtml extends AbstractRightFrameHtml {
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         } else
         if (
-            "java.io.File".equals(qualifiedAttributeTypeName)
-            || "org.apache.tools.ant.types.Resource".equals(qualifiedAttributeTypeName)
+            "org.apache.tools.ant.types.Resource".equals(qualifiedAttributeTypeName)
             || "org.apache.tools.ant.types.Path".equals(qualifiedAttributeTypeName)
             || "java.lang.Class".equals(qualifiedAttributeTypeName)
             || "java.lang.Object".equals(qualifiedAttributeTypeName)
@@ -348,7 +382,10 @@ class TypeHtml extends AbstractRightFrameHtml {
             rhs = "<var>" + Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated() + "</var>";
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         } else
-        if ("java.lang.String".equals(qualifiedAttributeTypeName)) {
+        if (
+            "java.io.File".equals(qualifiedAttributeTypeName)
+            || "java.lang.String".equals(qualifiedAttributeTypeName)
+        ) {
             rhs = "<var>" + Notations.fromCamelCase(attributeSetterParameterName).toLowerCaseHyphenated() + "</var>";
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         } else
@@ -411,22 +448,7 @@ class TypeHtml extends AbstractRightFrameHtml {
         }
 
         String suffix = mandatory ? " (mandatory)" : "";
-        this.l("      <dt>");
-        this.l("        <a name=\"" + attribute.name + "\" />");
-        this.l("        <code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix);
-        this.l("      </dt>");
-
-        // Generate attribute description.
-        try {
-            String
-            attributeHtmlText = html.generateFor(attribute.methodDoc, rootDoc);
-
-            this.l(
-"      <dd>",
-"        " + attributeHtmlText.replaceAll("\\s+", " "),
-"      </dd>"
-            );
-        } catch (Longjump l) {}
+        return "        <a name=\"" + attribute.name + "\" /><code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix;
     }
 
     private void
@@ -578,13 +600,11 @@ class TypeHtml extends AbstractRightFrameHtml {
 
         if (attributesByGroup.size() == 1 && attributesByGroup.containsKey(null)) {
             this.l(
-"    <dl>"
+"  <dl>"
             );
-            for (AntAttribute attribute : attributes) {
-                this.printAttribute(attribute, html, rootDoc);
-            }
+            printAttributes2(attributes, html, rootDoc);
             this.l(
-"    </dl>"
+"  </dl>"
             );
         } else {
             for (Entry<String, List<AntAttribute>> e : attributesByGroup.entrySet()) {
@@ -592,20 +612,81 @@ class TypeHtml extends AbstractRightFrameHtml {
                 List<AntAttribute> attributesOfGroup = e.getValue();
 
                 this.l(
-"      <h5>" + (group == null ? "Other" : group) + "</h5>"
+"  <h5>" + (group == null ? "Other" : group) + "</h5>"
                 );
 
                 this.l(
-"    <dl>"
+"  <dl>"
                 );
-                for (AntAttribute attribute : attributesOfGroup) {
-                    this.printAttribute(attribute, html, rootDoc);
-                }
+                printAttributes2(attributesOfGroup, html, rootDoc);
                 this.l(
-"    </dl>"
+"  </dl>"
                 );
             }
         }
+    }
+
+    private void printAttributes2(List<AntAttribute> attributes, Html html, RootDoc rootDoc) {
+        
+        Map<AntAttribute, Collection<AntAttribute>>
+        seeSources = new HashMap<AntDoclet.AntAttribute, Collection<AntAttribute>>();
+        Map<AntAttribute, AntAttribute>
+        seeTargets = new HashMap<AntAttribute, AntAttribute>();
+        
+        for (AntAttribute a : attributes) {
+
+            AntAttribute seeTarget = seeAttribute(a, attributes, rootDoc);
+
+            if (seeTarget != null) {
+
+                Collection<AntAttribute> sources = seeSources.get(seeTarget);
+                if (sources == null) {
+                    seeSources.put(seeTarget, (sources = new ArrayList<AntAttribute>()));
+                }
+                sources.add(a);
+
+                seeTargets.put(a, seeTarget);
+            }
+        }
+
+        for (AntAttribute a : attributes) {
+            if (seeTargets.containsKey(a)) continue;
+            Collection<AntAttribute> sss = seeSources.get(a);
+            if (sss == null) {
+                this.printAttribute(a, Collections.emptyList(), html, rootDoc);
+            } else {
+                this.printAttribute(a, sss, html, rootDoc);
+            }
+        }
+    }
+
+    /**
+     * @return The ANT attribute designated by the "&#64;see" target iff the <var>attribute</var> (A) has NO text and
+     *         (B) has a single block tag, "&#64;see", pointing to another attribute contained in
+     *         <var>allAttributes</var>
+     */
+    private static AntAttribute
+    seeAttribute(AntAttribute attribute, List<AntAttribute> allAttributes, RootDoc rootDoc) {
+
+        if (attribute.methodDoc.inlineTags().length == 0 && attribute.methodDoc.tags().length == 1) {
+
+            Tag t = attribute.methodDoc.tags()[0];
+            if (t.name().equals("@see")) {
+                Doc targetDoc;
+                try {
+                    targetDoc = Docs.findDoc(attribute.methodDoc, t.text(), rootDoc);
+                } catch (Longjump e) {
+                    targetDoc = null;
+                }
+                if (targetDoc != null) {
+                    for (AntAttribute a : allAttributes) {
+                        if (a.methodDoc == targetDoc) return a;
+                    }
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**
