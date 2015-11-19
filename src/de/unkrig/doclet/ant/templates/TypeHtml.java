@@ -492,7 +492,6 @@ class TypeHtml extends AbstractRightFrameHtml {
                 return;
             }
 
-
             this.l(
 "      <dd>",
 "        <a name=\"" + stqn + "\" />"
@@ -554,6 +553,8 @@ class TypeHtml extends AbstractRightFrameHtml {
 "</dd>"
                 );
             }
+
+            seenTypes.remove(subelementTypeClassDoc);
         }
     }
 
@@ -575,12 +576,16 @@ class TypeHtml extends AbstractRightFrameHtml {
             attributesOfGroup.add(attribute);
         }
 
-        this.l("    <dl>");
-
         if (attributesByGroup.size() == 1 && attributesByGroup.containsKey(null)) {
+            this.l(
+"    <dl>"
+            );
             for (AntAttribute attribute : attributes) {
                 this.printAttribute(attribute, html, rootDoc);
             }
+            this.l(
+"    </dl>"
+            );
         } else {
             for (Entry<String, List<AntAttribute>> e : attributesByGroup.entrySet()) {
                 String             group             = e.getKey();
@@ -590,13 +595,17 @@ class TypeHtml extends AbstractRightFrameHtml {
 "      <h5>" + (group == null ? "Other" : group) + "</h5>"
                 );
 
+                this.l(
+"    <dl>"
+                );
                 for (AntAttribute attribute : attributesOfGroup) {
                     this.printAttribute(attribute, html, rootDoc);
                 }
+                this.l(
+"    </dl>"
+                );
             }
         }
-
-        this.l("    </dl>");
     }
 
     /**
