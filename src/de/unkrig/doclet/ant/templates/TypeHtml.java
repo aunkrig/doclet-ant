@@ -283,12 +283,12 @@ class TypeHtml extends AbstractRightFrameHtml {
     rootDoc) {
 
         this.l(
-"      <dt>" + attributeTerm(primaryAttribute, html, rootDoc) + "</dt>"
+"      <dt>" + TypeHtml.attributeTerm(primaryAttribute, html, rootDoc) + "</dt>"
         );
-        
+
         for (AntAttribute a : alternativeAttributes) {
             this.l(
-"      <dt>" + attributeTerm(a, html, rootDoc) + "</dt>"
+"      <dt>" + TypeHtml.attributeTerm(a, html, rootDoc) + "</dt>"
             );
         }
 
@@ -602,7 +602,7 @@ class TypeHtml extends AbstractRightFrameHtml {
             this.l(
 "  <dl>"
             );
-            printAttributes2(attributes, html, rootDoc);
+            this.printAttributes2(attributes, html, rootDoc);
             this.l(
 "  </dl>"
             );
@@ -618,7 +618,7 @@ class TypeHtml extends AbstractRightFrameHtml {
                 this.l(
 "  <dl>"
                 );
-                printAttributes2(attributesOfGroup, html, rootDoc);
+                this.printAttributes2(attributesOfGroup, html, rootDoc);
                 this.l(
 "  </dl>"
                 );
@@ -627,15 +627,15 @@ class TypeHtml extends AbstractRightFrameHtml {
     }
 
     private void printAttributes2(List<AntAttribute> attributes, Html html, RootDoc rootDoc) {
-        
+
         Map<AntAttribute, Collection<AntAttribute>>
         seeSources = new HashMap<AntDoclet.AntAttribute, Collection<AntAttribute>>();
         Map<AntAttribute, AntAttribute>
         seeTargets = new HashMap<AntAttribute, AntAttribute>();
-        
+
         for (AntAttribute a : attributes) {
 
-            AntAttribute seeTarget = seeAttribute(a, attributes, rootDoc);
+            AntAttribute seeTarget = TypeHtml.seeAttribute(a, attributes, rootDoc);
 
             if (seeTarget != null) {
 
@@ -665,7 +665,7 @@ class TypeHtml extends AbstractRightFrameHtml {
      *         (B) has a single block tag, "&#64;see", pointing to another attribute contained in
      *         <var>allAttributes</var>
      */
-    private static AntAttribute
+    @Nullable private static AntAttribute
     seeAttribute(AntAttribute attribute, List<AntAttribute> allAttributes, RootDoc rootDoc) {
 
         if (attribute.methodDoc.inlineTags().length == 0 && attribute.methodDoc.tags().length == 1) {
@@ -685,7 +685,7 @@ class TypeHtml extends AbstractRightFrameHtml {
                 }
             }
         }
-        
+
         return null;
     }
 
