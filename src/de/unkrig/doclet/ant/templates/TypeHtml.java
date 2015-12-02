@@ -48,6 +48,7 @@ import com.sun.javadoc.Tag;
 import com.sun.javadoc.Type;
 
 import de.unkrig.commons.doclet.Docs;
+import de.unkrig.commons.doclet.Types;
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.Longjump;
@@ -337,6 +338,10 @@ class TypeHtml extends AbstractRightFrameHtml {
         String qualifiedAttributeTypeName   = attributeType.qualifiedTypeName();
         String attributeSetterParameterName = attribute.methodDoc.parameters()[0].name();
 
+        final ClassDoc enumeratedAttributeClassdoc = rootDoc.classNamed(
+            "org.apache.tools.ant.types.EnumeratedAttribute"
+        );
+
         if (valueExplanationHtml != null) {
             rhs = "<i>" + valueExplanationHtml + "</i>";
             if (defaultValue != null) {
@@ -369,7 +374,7 @@ class TypeHtml extends AbstractRightFrameHtml {
             || "java.lang.Float".equals(qualifiedAttributeTypeName)
             || "java.lang.Double".equals(qualifiedAttributeTypeName)
         ) {
-            rhs = "<var>N</var>";
+            rhs = "<var>" + Notations.fromCamelCase(attributeSetterParameterName).toLowerCaseHyphenated() + "</var>";
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         } else
         if (
@@ -409,6 +414,61 @@ class TypeHtml extends AbstractRightFrameHtml {
                 );
             }
             rhs = sb.toString();
+        } else
+        if (
+            enumeratedAttributeClassdoc != null
+            && attributeType instanceof ClassDoc
+            && ((ClassDoc) attributeType).subclassOf(enumeratedAttributeClassdoc)
+        ) {
+            String attributeClassName = Types.className((ClassDoc) attributeType);
+
+            String[] values;
+            try {
+                Class<?> clasS = Class.forName(attributeClassName);
+
+                try {
+                    values = (String[]) clasS.getMethod("getValues").invoke(clasS.newInstance());
+                    StringBuilder sb = new StringBuilder();
+
+                    boolean hadDefault = false;
+                    for (String value : values) {
+                        if (sb.length() > 0) sb.append('|');
+                        if (value.equals(defaultValue)) {
+                            sb.append("<u>").append(value).append("</u>");
+                            hadDefault = true;
+                        } else {
+                            sb.append(value);
+                        }
+                    }
+                    if (defaultValue != null && !hadDefault) {
+                        rootDoc.printWarning(
+                            attribute.methodDoc.position(),
+                            "Default value \"" + defaultValue + "\" matches none of the enumerated attribute values"
+                        );
+                    }
+                    rhs = sb.toString();
+                } catch (Exception e) {
+                    rootDoc.printError(
+                        attribute.methodDoc.position(),
+                        "Retrieving values of enumerated attribute type \"" + attributeClassName + "\": " + e.toString()
+                    );
+                    rhs = "???";
+                }
+            } catch (Exception e) {
+                rootDoc.printError(
+                    attribute.methodDoc.position(),
+                    (
+                        "Loading enumerated attribute type \""
+                        + attributeClassName
+                        + "\": "
+                        + e.toString()
+                        + ": Make sure that \"ant.jar\" and class \""
+                        + attributeClassName
+                        + "\" are on the doclet's classpath"
+                    )
+                );
+                rhs = "???";
+            }
         } else
         {
             try {
