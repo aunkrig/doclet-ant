@@ -62,10 +62,11 @@ import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.HtmlTemplate;
 import de.unkrig.notemplate.javadocish.Options;
+import de.unkrig.notemplate.javadocish.templates.AbstractDetailHtml;
 import de.unkrig.notemplate.javadocish.templates.AbstractRightFrameHtml;
 
 public
-class TypeHtml extends AbstractRightFrameHtml {
+class TypeHtml extends AbstractDetailHtml {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
@@ -81,11 +82,185 @@ class TypeHtml extends AbstractRightFrameHtml {
 
         String home = "";
 
-        super.rRightFrameHtml(
-            typeGroup.typeTitleMf.format(new String[] { antType.name }), // windowTitle
-            options,                                                     // options
-            new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
-            new String[] {                                               // nav1
+        List<Section> sections = new ArrayList<AbstractDetailHtml.Section>();
+
+        MethodDoc characterData = antType.characterData;
+        if (characterData != null) {
+            SectionAddendum sa = new SectionAddendum();
+            sa.title   = "TITLE";
+            try {
+                sa.content = html.generateFor(characterData, rootDoc).replaceAll("\\s+", " ");
+            } catch (Longjump l) {
+                sa.content = "???";
+            }
+
+            Section textSection = new Section();
+            textSection.anchor              = "text";
+            textSection.detailTitle         = "Text between start and end tag";
+            textSection.navigationLinkLabel = "Text";
+            textSection.addenda.add(sa);
+
+            sections.add(textSection);
+        }
+
+        ATTRIBUTES: {
+            List<AntAttribute> attributes = antType.attributes;
+            if (attributes.isEmpty()) break ATTRIBUTES;
+
+            List<SectionItem> attributeSectionItems = new ArrayList<AbstractDetailHtml.SectionItem>();
+
+            {
+                Map<AntAttribute, Collection<AntAttribute>>
+                seeSources = new HashMap<AntDoclet.AntAttribute, Collection<AntAttribute>>();
+                Map<AntAttribute, AntAttribute>
+                seeTargets = new HashMap<AntAttribute, AntAttribute>();
+
+                for (AntAttribute a : attributes) {
+
+                    AntAttribute seeTarget = TypeHtml.seeAttribute(a, attributes, rootDoc);
+
+                    if (seeTarget != null) {
+
+                        Collection<AntAttribute> sources = seeSources.get(seeTarget);
+                        if (sources == null) {
+                            seeSources.put(seeTarget, (sources = new ArrayList<AntAttribute>()));
+                        }
+                        sources.add(a);
+
+                        seeTargets.put(a, seeTarget);
+                    }
+                }
+
+                for (AntAttribute a : attributes) {
+                    if (seeTargets.containsKey(a)) continue;
+                    Collection<AntAttribute> sss = seeSources.get(a);
+                    if (sss == null) sss = Collections.emptyList();
+
+                    String summaryTitle = a.name;
+                    for (AntAttribute sa : sss) {
+                        summaryTitle += ", " + sa.name;
+                    }
+
+                    String detailTitle = TypeHtml.attributeTerm(a, html, rootDoc);
+                    for (AntAttribute sa : sss) {
+                        detailTitle += ", " + TypeHtml.attributeTerm(sa, html, rootDoc);
+                    }
+
+                    String firstSentence;
+                    try {
+                        firstSentence = html.fromTags(a.methodDoc.firstSentenceTags(), a.methodDoc, rootDoc);
+                    } catch (Longjump e) {
+                        firstSentence = "???";
+                    }
+
+                    String description;
+                    {
+                        String tmp;
+                        try {
+                            tmp = html.generateFor(a.methodDoc, rootDoc);
+                        } catch (Longjump l) {
+                            tmp = "???";
+                        }
+                        description = tmp;
+                    }
+
+                    SectionItem sectionItem = new SectionItem();
+                    sectionItem.anchor             = a.name;
+                    sectionItem.summaryTableCells  = new String[] { summaryTitle, firstSentence };
+                    sectionItem.detailTitle        = detailTitle;
+                    sectionItem.printDetailContent = () -> { TypeHtml.this.p(description); };
+
+                    attributeSectionItems.add(sectionItem);
+                }
+            }
+
+            Section attributesSection = new Section();
+            attributesSection.anchor               = "attributes";
+            attributesSection.detailTitle          = "Attribute Detail";
+            attributesSection.detailDescription    = "Default values are <u>underlined</u>.";
+            attributesSection.navigationLinkLabel  = "Attributes";
+            attributesSection.summaryTableHeadings = new String[] { "Name", "Description" };
+            attributesSection.summaryTitle1        = "Attribute Summary";
+            attributesSection.summaryTitle2        = "Attributes";
+            attributesSection.items.addAll(attributeSectionItems);
+
+            sections.add(attributesSection);
+        }
+
+        SUBELEMENTS: {
+            List<AntSubelement> subelements = antType.subelements;
+            if (subelements.isEmpty()) break SUBELEMENTS;
+
+            List<SectionItem> subelementSectionItems = new ArrayList<SectionItem>();
+
+            for (AntSubelement subelement : subelements) {
+
+                ClassDoc subelementTypeClassDoc = subelement.type.asClassDoc();
+                String   stqn                   = subelementTypeClassDoc.qualifiedName();
+
+                String name;
+                if (subelement.name != null) {
+                    name = subelement.name;
+                } else {
+                    name = stqn;
+                    try {
+                        name = "Any <code>" + html.makeLink(
+                            subelementTypeClassDoc, // from
+                            subelementTypeClassDoc, // to
+                            false,                  // plain
+                            null,                   // label
+                            null,                   // target
+                            rootDoc                 // rootDoc
+                        ) + "</code>";
+                    } catch (Longjump l) {
+                        name = "Any <code>" + stqn + "</code>";
+                    }
+                }
+
+                String description;
+                try {
+                    description = html.generateFor(
+                        subelement.methodDoc,
+                        rootDoc
+                    ).replaceAll("\\s+", " ");
+                } catch (Longjump l) {
+                    description = "???";
+                }
+
+                SectionItem subelementSectionItem = new SectionItem();
+                subelementSectionItem.anchor             = stqn;
+                subelementSectionItem.summaryTableCells  = new String[] { name, description };
+                subelementSectionItem.detailTitle        = name;
+                subelementSectionItem.printDetailContent = () -> {
+                    TypeHtml.this.printSubelement(
+                        atwc.current().classDoc, // from
+                        subelement,              // subelement
+                        html,                    // html
+                        rootDoc,                 // rootDoc
+                        new HashSet<ClassDoc>()  // seenTypes
+                    );
+                };
+
+                subelementSectionItems.add(subelementSectionItem);
+            }
+
+            Section subelementsSection = new Section();
+            subelementsSection.anchor               = "subelements";
+            subelementsSection.detailTitle          = "Subelement Detail";
+            subelementsSection.navigationLinkLabel  = "Subelements";
+            subelementsSection.summaryTableHeadings = new String[] { "Name", "Description" };
+            subelementsSection.summaryTitle1        = "Subelement Summary";
+            subelementsSection.summaryTitle2        = "Subelements";
+            subelementsSection.items.addAll(subelementSectionItems);
+
+            sections.add(subelementsSection);
+        }
+
+        super.rDetail(
+            typeGroup.typeTitleMf.format(new String[] { antType.name }),   // windowTitle
+            options,                                                       // options
+            new String[] { "../stylesheet.css", "../stylesheet2.css" },    // stylesheetLinks
+            new String[] {                                                 // nav1
                 "Overview",         home + "../overview-summary.html",
                 "Task",             (
                     typeGroup.typeGroupHeading.equals("Tasks")
@@ -104,59 +279,104 @@ class TypeHtml extends AbstractRightFrameHtml {
                 ),
                 "Index",            home + "index-all.html",
             },
-            new String[] {                                               // nav2
+            new String[] {                                                 // nav2
                 TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupHeading, home, atwc.previous()),
                 TypeHtml.antTypeLink("Next " + typeGroup.typeGroupHeading, home, atwc.next()),
             },
-            new String[] {                                               // nav3
+            new String[] {                                                 // nav3
                 "Frames",    home + "../index.html?tasks/" + antType.name + ".html",
                 "No Frames", antType.name + ".html",
             },
-            new String[] {                                               // nav4
-                "All Classes", home + "alldefinitions-noframe.html",
+            new String[] {                                                 // nav4
+                "All Definitions", home + "alldefinitions-noframe.html",
             },
-            null,                                                        // nav5
-            new String[] {                                               // nav6
-                "Character data", (
-                    antType.characterData == null
-                    ? AbstractRightFrameHtml.DISABLED
-                    : "#character_data_detail"
-                ),
-                "Attributes",     (
-                    antType.attributes.isEmpty()
-                    ? AbstractRightFrameHtml.DISABLED
-                    : "#attribute_detail"
-                ),
-                "Subelements",    (
-                    antType.subelements.isEmpty()
-                    ? AbstractRightFrameHtml.DISABLED
-                    : "#subelement_detail"
-                ),
+            HtmlTemplate.esc(typeGroup.typeGroupHeading),                  // subtitle
+            typeGroup.typeHeadingMf.format(new String[] { antType.name }), // title
+            new Runnable() {                                               // prolog
+
+                @Override public void
+                run() {
+                    try {
+                        TypeHtml.this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
+                    } catch (Longjump l) {}
+                }
             },
-            () -> {
-                String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
-                String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
-                TypeHtml.this.l(
-"<div class=\"header\">",
-"  <div class=\"subTitle\">" + HtmlTemplate.esc(typeGroup.typeGroupHeading) + "</div>",
-"  <h2 title=\"" + typeTitle + "\" class=\"title\">" + typeHeading +  "</h2>",
-"</div>",
-"<div class=\"contentContainer\">",
-"  <div class=\"description\">"
-                );
-
-                final Set<ClassDoc> seenTypes = new HashSet<ClassDoc>();
-
-                try {
-                    TypeHtml.this.printType(antType, html, rootDoc, seenTypes);
-                } catch (Longjump l) {}
-
-                TypeHtml.this.l(
-"  </div>",
-"</div>"
-                );
-            }
+            sections
         );
+//        super.rRightFrameHtml(
+//            typeGroup.typeTitleMf.format(new String[] { antType.name }), // windowTitle
+//            options,                                                     // options
+//            new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
+//            new String[] {                                               // nav1
+//                "Overview",         home + "../overview-summary.html",
+//                "Task",             (
+//                    typeGroup.typeGroupHeading.equals("Tasks")
+//                    ? AbstractRightFrameHtml.HIGHLIT
+//                    : AbstractRightFrameHtml.DISABLED
+//                ),
+//                "Type",             (
+//                    typeGroup.typeGroupHeading.equals("Types")
+//                    ? AbstractRightFrameHtml.HIGHLIT
+//                    : AbstractRightFrameHtml.DISABLED
+//                ),
+//                "Chainable reader", (
+//                    typeGroup.typeGroupHeading.equals("Chainable readers")
+//                    ? AbstractRightFrameHtml.HIGHLIT
+//                    : AbstractRightFrameHtml.DISABLED
+//                ),
+//                "Index",            home + "index-all.html",
+//            },
+//            new String[] {                                               // nav2
+//                TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupHeading, home, atwc.previous()),
+//                TypeHtml.antTypeLink("Next " + typeGroup.typeGroupHeading, home, atwc.next()),
+//            },
+//            new String[] {                                               // nav3
+//                "Frames",    home + "../index.html?tasks/" + antType.name + ".html",
+//                "No Frames", antType.name + ".html",
+//            },
+//            new String[] {                                               // nav4
+//                "All Classes", home + "alldefinitions-noframe.html",
+//            },
+//            null,                                                        // nav5
+//            new String[] {                                               // nav6
+//                "Character data", (
+//                    antType.characterData == null
+//                    ? AbstractRightFrameHtml.DISABLED
+//                    : "#character_data_detail"
+//                ),
+//                "Attributes",     (
+//                    attributes.isEmpty()
+//                    ? AbstractRightFrameHtml.DISABLED
+//                    : "#attribute_detail"
+//                ),
+//                "Subelements",    (
+//                    antType.subelements.isEmpty()
+//                    ? AbstractRightFrameHtml.DISABLED
+//                    : "#subelement_detail"
+//                ),
+//            },
+//            () -> {
+//                String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
+//                String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
+//                TypeHtml.this.l(
+//"<div class=\"header\">",
+//"  <div class=\"subTitle\">" + HtmlTemplate.esc(typeGroup.typeGroupHeading) + "</div>",
+//"  <h2 title=\"" + typeTitle + "\" class=\"title\">" + typeHeading +  "</h2>",
+//"</div>",
+//"<div class=\"contentContainer\">",
+//"  <div class=\"description\">"
+//                );
+//
+//                try {
+//                    TypeHtml.this.printType(antType, html, rootDoc, new HashSet<ClassDoc>());
+//                } catch (Longjump l) {}
+//
+//                TypeHtml.this.l(
+//"  </div>",
+//"</div>"
+//                );
+//            }
+//        );
     }
 
     private static String
@@ -173,42 +393,42 @@ class TypeHtml extends AbstractRightFrameHtml {
         );
     }
 
-    private void
-    printType(final AntType antType, final Html html, final RootDoc rootDoc, Set<ClassDoc> seenTypes)
-    throws Longjump {
-        this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
-
-        MethodDoc characterData = antType.characterData;
-        if (characterData != null) {
-            this.l(
-"",
-"    <h3>Text between start and end tag</h3>",
-""
-            );
-            this.printCharacterData(characterData, html, rootDoc);
-        }
-
-        if (!antType.attributes.isEmpty()) {
-            this.l(
-"",
-"    <h3>Attributes</h3>",
-"",
-"    <p>Default values are <u>underlined</u>.</p>",
-""
-            );
-            this.printAttributes(antType.attributes, html, rootDoc);
-        }
-
-        List<AntSubelement> subelements = antType.subelements;
-        if (!subelements.isEmpty()) {
-            this.l(
-"",
-"    <h3>Subelements</h3>",
-""
-            );
-            this.printSubelements(antType.classDoc, subelements, html, rootDoc, seenTypes);
-        }
-    }
+//    private void
+//    printType(final AntType antType, final Html html, final RootDoc rootDoc, Set<ClassDoc> seenTypes)
+//    throws Longjump {
+//        this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
+//
+//        MethodDoc characterData = antType.characterData;
+//        if (characterData != null) {
+//            this.l(
+//"",
+//"    <h3>Text between start and end tag</h3>",
+//""
+//            );
+//            this.printCharacterData(characterData, html, rootDoc);
+//        }
+//
+//        if (!antType.attributes.isEmpty()) {
+//            this.l(
+//"",
+//"    <h3>Attributes</h3>",
+//"",
+//"    <p>Default values are <u>underlined</u>.</p>",
+//""
+//            );
+//            this.printAttributes(antType.attributes, html, rootDoc);
+//        }
+//
+//        List<AntSubelement> subelements = antType.subelements;
+//        if (!subelements.isEmpty()) {
+//            this.l(
+//"",
+//"    <h3>Subelements</h3>",
+//""
+//            );
+//            this.printSubelements(antType.classDoc, subelements, html, rootDoc, seenTypes);
+//        }
+//    }
 
     private void
     printSubelements(Doc from, List<AntSubelement> subelements, Html html, RootDoc rootDoc, Set<ClassDoc> seenTypes) {
@@ -522,7 +742,10 @@ class TypeHtml extends AbstractRightFrameHtml {
         ClassDoc subelementTypeClassDoc = subelement.type.asClassDoc();
         String   stqn                   = subelementTypeClassDoc.qualifiedName();
 
-        this.l("      <dt>");
+        this.l(
+"      <dt>"
+        );
+
         if (subelement.name != null) {
             this.l(
 "        <a name=\"&lt;" + subelement.name + "&gt;\" />",
@@ -549,7 +772,30 @@ class TypeHtml extends AbstractRightFrameHtml {
                 );
             }
         }
-        this.l("      </dt>");
+
+        this.l(
+"      </dt>"
+        );
+
+        this.l(
+"      <dd>"
+        );
+
+        this.printSubelement2(from, subelement, html, rootDoc, seenTypes);
+
+        this.l(
+"      </dd>"
+        );
+    }
+
+    private void
+    printSubelement2(
+        Doc           from,
+        AntSubelement subelement,
+        final Html    html,
+        final RootDoc rootDoc,
+        Set<ClassDoc> seenTypes
+    ) {
 
         // Generate subelement description.
         try {
@@ -558,24 +804,25 @@ class TypeHtml extends AbstractRightFrameHtml {
                 rootDoc
             );
             this.l(
-"      <dd>",
-"        " + subelementHtmlText.replaceAll("\\s+", " "),
-"      </dd>"
+"        " + subelementHtmlText.replaceAll("\\s+", " ")
             );
         } catch (Longjump e) {}
+
+        ClassDoc subelementTypeClassDoc = subelement.type.asClassDoc();
+        String   stqn                   = subelementTypeClassDoc.qualifiedName();
 
         // Generate subelement type description.
         if (subelementTypeClassDoc.isIncluded()) {
 
             if (!seenTypes.add(subelementTypeClassDoc)) {
                 this.l(
-"      <dd>(The configuration options for this element are the same <a href=\"#" + stqn + "\">as described above</a>.)</dd>"
+"        <br />",
+"        (The configuration options for this element are the same <a href=\"#" + stqn + "\">as described above</a>.)"
                 );
                 return;
             }
 
             this.l(
-"      <dd>",
 "        <a name=\"" + stqn + "\" />"
             );
             try {
@@ -588,24 +835,15 @@ class TypeHtml extends AbstractRightFrameHtml {
 "        " + subelementTypeHtmlText.replaceAll("\\s+", " ")
                 );
             } catch (Longjump l) {}
-            this.l(
-"      </dd>"
-            );
 
             // Subelement's character data.
             MethodDoc
             characterData = AntDoclet.characterDataOf(subelementTypeClassDoc);
             if (characterData != null) {
                 this.l(
-"<dd><b>Text between start and end tag:</b></dd>",
-"<dd>",
-"  <dl>"
+"        <h5>Text between start and end tag:</h5>"
                 );
                 this.printCharacterData(characterData, html, rootDoc);
-                this.l(
-"  </dl>",
-"</dd>"
-                );
             }
 
             // Subelement's attributes' descriptions.
@@ -613,13 +851,9 @@ class TypeHtml extends AbstractRightFrameHtml {
             subelementAttributes = AntDoclet.attributesOf(subelementTypeClassDoc, rootDoc);
             if (!subelementAttributes.isEmpty()) {
                 this.l(
-"<dd><b>Attributes:</b></dd>",
-"<dd>"
+"        <h5>Attributes:</h5>"
                 );
                 this.printAttributes(subelementAttributes, html, rootDoc);
-                this.l(
-"</dd>"
-                );
             }
 
             // Subelement's subelements' descriptions.
@@ -627,13 +861,9 @@ class TypeHtml extends AbstractRightFrameHtml {
             subelementSubelements = AntDoclet.subelementsOf(subelementTypeClassDoc, rootDoc);
             if (!subelementSubelements.isEmpty()) {
                 this.l(
-"<dd><b>Subelements:</b></dd>",
-"<dd>"
+"        <h5>Subelements:</h5>"
                 );
                 this.printSubelements(from, subelementSubelements, html, rootDoc, seenTypes);
-                this.l(
-"</dd>"
-                );
             }
 
             seenTypes.remove(subelementTypeClassDoc);
