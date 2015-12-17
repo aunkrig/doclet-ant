@@ -301,12 +301,17 @@ class AntDoclet {
         /**
          * E.g. {@code "tasks"}
          */
-        final String name;
+        public final String name;
 
         /**
          * The ANT types that comprise the group.
          */
         public final List<AntType> types;
+
+        /**
+         * E.g. {@code "Task"}
+         */
+        public final String typeGroupName;
 
         /**
          * E.g. {@code "Tasks"}
@@ -324,7 +329,8 @@ class AntDoclet {
         public final MessageFormat typeHeadingMf;
 
         /**
-         * @param typeGroupHeading May contain inline tags
+         * @param typeGroupName    E.g. {@code "Task"}; may contain inline tags
+         * @param typeGroupHeading E.g. {@code "Tasks"}; may contain inline tags
          * @param typeTitleMf      Must not contain any inline tags; "<code>{0}</code>" maps to the type name
          * @param typeHeadingMf    May contain inline tags; "<code>{0}</code>" maps to the type name
          */
@@ -332,12 +338,14 @@ class AntDoclet {
         AntTypeGroup(
             String        name,
             List<AntType> types,
+            String        typeGroupName,
             String        typeGroupHeading,
             String        typeTitleMf,
             String        typeHeadingMf
         ) {
             this.name             = name;
             this.types            = types;
+            this.typeGroupName    = typeGroupName;
             this.typeGroupHeading = typeGroupHeading;
             this.typeTitleMf      = new MessageFormat(typeTitleMf);
             this.typeHeadingMf    = new MessageFormat(typeHeadingMf);
@@ -676,6 +684,7 @@ class AntDoclet {
         antTypeGroups.add(new AntTypeGroup(
             "tasks",
             tasks,
+            "Task", // typeGroupName
             "Tasks",
             "Task \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
@@ -683,6 +692,7 @@ class AntDoclet {
         antTypeGroups.add(new AntTypeGroup(
             "resourceCollections",
             resourceCollections,
+            "Resource collection", // typeGroupName
             "Resource collections",
             "Resource collection \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
@@ -690,6 +700,7 @@ class AntDoclet {
         antTypeGroups.add(new AntTypeGroup(
             "chainableReaders",
             chainableReaders,
+            "Chainable reader", // typeGroupName
             "Chainable readers",
             "Chainable reader \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
@@ -697,6 +708,7 @@ class AntDoclet {
         antTypeGroups.add(new AntTypeGroup(
             "conditions",
             conditions,
+            "Condition", // typeGroupName
             "Conditions",
             "Condition \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
@@ -704,6 +716,7 @@ class AntDoclet {
         antTypeGroups.add(new AntTypeGroup(
             "otherTypes",
             otherTypes,
+            "Other type", // typeGroupName
             "Other types",
             "Type \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
@@ -1026,6 +1039,7 @@ class AntDoclet {
     attributesOf(final ClassDoc classDoc, RootDoc rootDoc) {
 
         final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
+        METHODS:
         for (MethodDoc md : Docs.methods(classDoc, true, true)) {
 
             if (!md.isPublic() || "setProject".equals(md.name())) continue;
@@ -1041,6 +1055,19 @@ class AntDoclet {
                 String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
                 Type   type = methodParameters[0].type();
 
+                for (Iterator<AntAttribute> it = attributes.iterator(); it.hasNext();) {
+                    AntAttribute a = it.next();
+                    if (a.name.equals(name) && a.type == type) {
+
+                        // "md" is an overridden method; "a.methodDoc" is the overriding method.
+                        if (md.inlineTags().length > 0 && a.methodDoc.inlineTags().length == 0) {
+                            it.remove();
+                            break;
+                        } else {
+                            continue METHODS;
+                        }
+                    }
+                }
                 attributes.add(new AntAttribute(name, md, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
             }
         }
