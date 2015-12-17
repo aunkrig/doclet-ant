@@ -51,11 +51,12 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
             options,                           // options
             new String[] { "stylesheet.css" }, // stylesheetLinks
             new String[] {                     // nav1
-                "Overview",         AbstractRightFrameHtml.HIGHLIT,
-                "Task",             AbstractRightFrameHtml.DISABLED,
-                "Type",             AbstractRightFrameHtml.DISABLED,
-                "Chainable reader", AbstractRightFrameHtml.DISABLED,
-                "Index",            "index-all.html",
+                "Overview",            AbstractRightFrameHtml.HIGHLIT,
+                "Task",                AbstractRightFrameHtml.DISABLED,
+                "Resource collection", AbstractRightFrameHtml.DISABLED,
+                "Chainable reader",    AbstractRightFrameHtml.DISABLED,
+                "Condition",           AbstractRightFrameHtml.DISABLED,
+                "Index",               "index-all.html",
             },
             new String[] { "Prev", "Next" },   // nav2
             new String[] {                     // nav3

@@ -230,9 +230,9 @@ class TypeHtml extends AbstractDetailHtml {
                 SectionItem subelementSectionItem = new SectionItem();
                 subelementSectionItem.anchor             = stqn;
                 subelementSectionItem.summaryTableCells  = new String[] { name, description };
-                subelementSectionItem.detailTitle        = name;
+                subelementSectionItem.detailTitle        = "<code>&lt;" + name + "&gt;</code>";
                 subelementSectionItem.printDetailContent = () -> {
-                    TypeHtml.this.printSubelement(
+                    TypeHtml.this.printSubelement2(
                         atwc.current().classDoc, // from
                         subelement,              // subelement
                         html,                    // html
@@ -261,36 +261,41 @@ class TypeHtml extends AbstractDetailHtml {
             options,                                                       // options
             new String[] { "../stylesheet.css", "../stylesheet2.css" },    // stylesheetLinks
             new String[] {                                                 // nav1
-                "Overview",         home + "../overview-summary.html",
-                "Task",             (
-                    typeGroup.typeGroupHeading.equals("Tasks")
+                "Overview",            home + "../overview-summary.html",
+                "Task",                (
+                    typeGroup.typeGroupName.equals("Task")
                     ? AbstractRightFrameHtml.HIGHLIT
                     : AbstractRightFrameHtml.DISABLED
                 ),
-                "Type",             (
-                    typeGroup.typeGroupHeading.equals("Types")
+                "Resource collection", (
+                    typeGroup.typeGroupName.equals("Resource collection")
                     ? AbstractRightFrameHtml.HIGHLIT
                     : AbstractRightFrameHtml.DISABLED
                 ),
-                "Chainable reader", (
-                    typeGroup.typeGroupHeading.equals("Chainable readers")
+                "Chainable reader",    (
+                    typeGroup.typeGroupName.equals("Chainable reader")
                     ? AbstractRightFrameHtml.HIGHLIT
                     : AbstractRightFrameHtml.DISABLED
                 ),
-                "Index",            home + "index-all.html",
+                "Condition",           (
+                    typeGroup.typeGroupName.equals("Condition")
+                    ? AbstractRightFrameHtml.HIGHLIT
+                    : AbstractRightFrameHtml.DISABLED
+                ),
+                "Index",               home + "index-all.html",
             },
             new String[] {                                                 // nav2
-                TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupHeading, home, atwc.previous()),
-                TypeHtml.antTypeLink("Next " + typeGroup.typeGroupHeading, home, atwc.next()),
+                TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupName, home, atwc.previous()),
+                TypeHtml.antTypeLink("Next " + typeGroup.typeGroupName, home, atwc.next()),
             },
             new String[] {                                                 // nav3
-                "Frames",    home + "../index.html?tasks/" + antType.name + ".html",
+                "Frames",    home + "../index.html?" + typeGroup.name + "/" + antType.name + ".html",
                 "No Frames", antType.name + ".html",
             },
             new String[] {                                                 // nav4
                 "All Definitions", home + "alldefinitions-noframe.html",
             },
-            HtmlTemplate.esc(typeGroup.typeGroupHeading),                  // subtitle
+            HtmlTemplate.esc(typeGroup.typeGroupName),                     // subtitle
             typeGroup.typeHeadingMf.format(new String[] { antType.name }), // title
             new Runnable() {                                               // prolog
 
