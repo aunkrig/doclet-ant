@@ -86,18 +86,19 @@ class TypeHtml extends AbstractDetailHtml {
 
         MethodDoc characterData = antType.characterData;
         if (characterData != null) {
+
             SectionAddendum sa = new SectionAddendum();
-            sa.title   = "TITLE";
+            sa.title = "Text between start and end tag";
             try {
-                sa.content = html.generateFor(characterData, rootDoc).replaceAll("\\s+", " ");
+                sa.content = html.generateFor(characterData, rootDoc);
             } catch (Longjump l) {
                 sa.content = "???";
             }
 
             Section textSection = new Section();
             textSection.anchor              = "text";
-            textSection.detailTitle         = "Text between start and end tag";
             textSection.navigationLinkLabel = "Text";
+            textSection.summaryTitle1       = "Text";
             textSection.addenda.add(sa);
 
             sections.add(textSection);
