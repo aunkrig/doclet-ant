@@ -25,7 +25,7 @@
  */
 
 /**
- * Main package of the tool.
+ * Templates for the ANT doclet.
  */
 @NotNullByDefault
 package de.unkrig.doclet.ant.templates;
