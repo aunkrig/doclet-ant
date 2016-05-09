@@ -218,19 +218,22 @@ class TypeHtml extends AbstractDetailHtml {
                     }
                 }
 
-                String description;
+                String firstSentence;
                 try {
-                    description = html.generateFor(
+                    firstSentence = html.fromTags(
+                        subelement.methodDoc.firstSentenceTags(),
                         subelement.methodDoc,
                         rootDoc
-                    ).replaceAll("\\s+", " ");
-                } catch (Longjump l) {
-                    description = "???";
+                    );
+                } catch (Longjump e) {
+                    firstSentence = "???";
                 }
+
+                if (subelement.methodDoc.tags("@deprecated").length > 0) firstSentence = "(deprecated)";
 
                 SectionItem subelementSectionItem = new SectionItem();
                 subelementSectionItem.anchor             = stqn;
-                subelementSectionItem.summaryTableCells  = new String[] { name, description };
+                subelementSectionItem.summaryTableCells  = new String[] { name, firstSentence };
                 subelementSectionItem.detailTitle        = "<code>&lt;" + name + "&gt;</code>";
                 subelementSectionItem.printDetailContent = () -> {
                     TypeHtml.this.printSubelement2(
