@@ -572,7 +572,7 @@ class TypeHtml extends AbstractDetailHtml {
         );
 
         if (valueExplanationHtml != null) {
-            rhs = "<i>" + valueExplanationHtml + "</i>";
+            rhs = valueExplanationHtml;
             if (defaultValue != null) {
                 rhs += "|<u>" + defaultValueHtmlText + "</u>";
             }
@@ -710,7 +710,7 @@ class TypeHtml extends AbstractDetailHtml {
                             attribute.methodDoc,
                             rootDoc
                         ),
-                        false,                                                                           // plain
+                        true,                                                                            // plain
                         Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated(), // label
                         null,                                                                            // target
                         rootDoc                                                                          // rootDoc
