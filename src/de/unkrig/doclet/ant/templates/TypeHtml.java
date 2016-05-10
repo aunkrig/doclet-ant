@@ -458,7 +458,7 @@ class TypeHtml extends AbstractDetailHtml {
             subelementsOfGroup.add(subelement);
         }
 
-        this.l("    <dl>");
+        this.l("    <dl class=\"ant-subelements\">");
 
         if (subelementsByGroup.size() == 1 && subelementsByGroup.containsKey(null)) {
             for (AntSubelement subelement : subelements) {
@@ -513,12 +513,12 @@ class TypeHtml extends AbstractDetailHtml {
     rootDoc) {
 
         this.l(
-"      <dt>" + TypeHtml.attributeTerm(primaryAttribute, html, rootDoc) + "</dt>"
+"      <dt class=\"ant-attribute-term\">" + TypeHtml.attributeTerm(primaryAttribute, html, rootDoc) + "</dt>"
         );
 
         for (AntAttribute a : alternativeAttributes) {
             this.l(
-"      <dt>" + TypeHtml.attributeTerm(a, html, rootDoc) + "</dt>"
+"      <dt class=\"ant-attribute-term\">" + TypeHtml.attributeTerm(a, html, rootDoc) + "</dt>"
             );
         }
 
@@ -528,7 +528,7 @@ class TypeHtml extends AbstractDetailHtml {
             attributeHtmlText = html.generateFor(primaryAttribute.methodDoc, rootDoc);
 
             this.l(
-"      <dd>",
+"      <dd class=\"ant-attribute-definition\">",
 "        " + attributeHtmlText.replaceAll("\\s+", " "),
 "      </dd>"
             );
@@ -752,7 +752,7 @@ class TypeHtml extends AbstractDetailHtml {
         String   stqn                   = subelementTypeClassDoc.qualifiedName();
 
         this.l(
-"      <dt>"
+"      <dt class=\"ant-subelement-term\">"
         );
 
         if (subelement.name != null) {
@@ -787,7 +787,7 @@ class TypeHtml extends AbstractDetailHtml {
         );
 
         this.l(
-"      <dd>"
+"      <dd class=\"ant-subelement-definition\">"
         );
 
         this.printSubelement2(from, subelement, html, rootDoc, seenTypes);
@@ -899,7 +899,7 @@ class TypeHtml extends AbstractDetailHtml {
 
         if (attributesByGroup.size() == 1 && attributesByGroup.containsKey(null)) {
             this.l(
-"  <dl>"
+"  <dl class=\"ant-attributes\">"
             );
             this.printAttributes2(attributes, html, rootDoc);
             this.l(
@@ -915,7 +915,7 @@ class TypeHtml extends AbstractDetailHtml {
                 );
 
                 this.l(
-"  <dl>"
+"  <dl class=\"ant-attributes\">"
                 );
                 this.printAttributes2(attributesOfGroup, html, rootDoc);
                 this.l(
