@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -128,10 +127,23 @@ class AntDoclet {
     private final Options                          options;
     private final File                             antlibFile;
     private final Map<String /*packageName*/, URL> externalJavadocs;
+    private final Theme                            theme;
 
-    private final Mapping<ClassDoc, URL>                                         externalAntdocs;
-    private final Mapping<String /*qualifiedClassName*/, String /*antTypeName*/> knownTypes;
-    private final Theme                                                          theme;
+    public static final
+    class Link {
+
+        public final String label, href;
+
+        public Link(String label, String href) {
+            this.label = label;
+            this.href  = href;
+        }
+    }
+
+    /**
+     * Documentation URLs for well-known ANT tasks and types.
+     */
+    private final Mapping<ClassDoc, Link> externalAntdocs;
 
     public
     AntDoclet(
@@ -148,132 +160,97 @@ class AntDoclet {
         this.externalJavadocs = externalJavadocs;
         this.theme            = theme;
 
+        Map<ClassDoc, Link> m = new HashMap<ClassDoc, Link>();
+
+        // Resource "de/unkrig/doclet/ant/AntDoclet/external-antdocs.properties" provides a number of
+        // qualified-class-name to label/href mappings.
         {
-            Map<ClassDoc, URL> m = new HashMap<ClassDoc, URL>();
-
-            {
-                Properties properties;
-                try {
-                    properties = this.loadPropertiesFromResource((
-                        this.getClass().getPackage().getName().replace('.', '/')
-                        + "/external-antdocs.properties"
-                    ));
-                } catch (IOException ioe) {
-                    throw new AssertionError(null, ioe);
-                }
-
-                for (Entry<Object, Object> e : properties.entrySet()) {
-                    String qualifiedClassName = (String) e.getKey();
-                    String href               = (String) e.getValue();
-
-                    ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
-                    if (cd == null) {
-                        rootDoc.printError("Cannot load \"" + qualifiedClassName + "\" for external HREF");
-                        continue;
-                    }
-
-                    try {
-                        m.put(cd, new URL(href));
-                    } catch (MalformedURLException mue) {
-                        throw new ExceptionInInitializerError(mue);
-                    }
-                }
+            Properties properties;
+            try {
+                properties = this.loadPropertiesFromResource((
+                    this.getClass().getPackage().getName().replace('.', '/')
+                    + "/external-antdocs.properties"
+                ));
+            } catch (IOException ioe) {
+                throw new AssertionError(null, ioe);
             }
 
-            {
-                Properties properties;
-                try {
-                    properties = this.loadPropertiesFromResource((
-                        "org/apache/tools/ant/taskdefs/defaults.properties"
-                    ));
-                } catch (IOException ioe) {
-                    throw ExceptionUtil.wrap("Make sure that \"ant.jar\" is on the doclet's classpath", ioe);
+            for (Entry<Object, Object> e : properties.entrySet()) {
+                String qualifiedClassName = (String) e.getKey();
+                String tmp                = (String) e.getValue();
+
+                String label = tmp.substring(0, tmp.lastIndexOf(' ')).trim();
+                String href  = tmp.substring(tmp.lastIndexOf(' ') + 1).trim();
+
+                ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
+                if (cd == null) {
+                    rootDoc.printError("Cannot load \"" + qualifiedClassName + "\" for external HREF");
+                    continue;
                 }
 
-
-                for (Entry<Object, Object> e : properties.entrySet()) {
-                    String taskName           = (String) e.getKey();
-                    String qualifiedClassName = (String) e.getValue();
-
-                    ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
-                    if (cd == null) {
-
-                        // "defaults.properties" declares many "optional" tasks, so let's not complain if the task is
-                        // not on the classpath.
-                        //rootDoc.printError("Cannot load task \"" + qualifiedClassName + "\" for external HREF");
-                        continue;
-                    }
-
-                    try {
-                        m.put(cd, new URL("http://ant.apache.org/manual/Tasks/" + taskName + ".html"));
-                    } catch (MalformedURLException mue) {
-                        throw new ExceptionInInitializerError(mue);
-                    }
-                }
+                m.put(cd, new Link(label, href));
             }
-
-            {
-                Properties properties;
-                try {
-                    properties = this.loadPropertiesFromResource("org/apache/tools/ant/types/defaults.properties");
-                } catch (IOException ioe) {
-                    throw ExceptionUtil.wrap("Make sure that \"ant.jar\" is on the doclet's classpath", ioe);
-                }
-
-                for (Entry<Object, Object> e : properties.entrySet()) {
-                    String typeName           = (String) e.getKey();
-                    String qualifiedClassName = (String) e.getValue();
-
-                    ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
-                    if (cd == null) {
-
-                        // "defaults.properties" declares many "optional" types, so let's not complain if the type is
-                        // not on the classpath.
-                        //rootDoc.printError("Cannot load type \"" + qualifiedClassName + "\" for external HREF");
-                        continue;
-                    }
-
-                    try {
-                        m.put(cd, new URL("http://ant.apache.org/manual/Types/" + typeName + ".html"));
-                    } catch (MalformedURLException mue) {
-                        throw new ExceptionInInitializerError(mue);
-                    }
-                }
-            }
-
-            this.externalAntdocs = Mappings.fromMap(m);
         }
 
-
+        // Determine the documentation URLs for the ANT standard tasks.
         {
-            final Properties p = new Properties();
-            for (String rn : new String[] {
-                "org/apache/tools/ant/listener/defaults.properties",
-                "org/apache/tools/ant/taskdefs/defaults.properties",
-                "org/apache/tools/ant/types/defaults.properties"
-            }) {
-                InputStream is = this.getClass().getClassLoader().getResourceAsStream(rn);
-                assert is != null : rn;
-                try {
-                    p.load(is);
-                    is.close();
-                } catch (IOException ioe) {
-                    throw new ExceptionInInitializerError(ioe);
-                } finally {
-                    try { is.close(); } catch (Exception e) {}
-                }
+            Properties properties;
+            try {
+                properties = this.loadPropertiesFromResource("org/apache/tools/ant/taskdefs/defaults.properties");
+            } catch (IOException ioe) {
+                throw ExceptionUtil.wrap("Make sure that \"ant.jar\" is on the doclet's classpath", ioe);
             }
 
-            Map<String /*qualifiedClassName*/, String /*name*/> m = new HashMap<String, String>();
-            for (Entry<Object, Object> e : p.entrySet()) {
-                String antTypeName        = (String) e.getKey();
+            for (Entry<Object, Object> e : properties.entrySet()) {
+                String taskName           = (String) e.getKey();
                 String qualifiedClassName = (String) e.getValue();
 
-                m.put(qualifiedClassName, antTypeName);
+                ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
+                if (cd == null) {
+
+                    // "defaults.properties" declares many "optional" tasks, so let's not complain if the task is
+                    // not on the classpath.
+                    //rootDoc.printError("Cannot load task \"" + qualifiedClassName + "\" for external HREF");
+                    continue;
+                }
+
+                m.put(cd, new Link(
+                    "<code>&lt;" + taskName + "&gt;</code>",
+                    "http://ant.apache.org/manual/Tasks/" + taskName + ".html"
+                ));
+            }
+        }
+
+        // Determine the documentation URLs for the ANT standard types.
+        {
+            Properties properties;
+            try {
+                properties = this.loadPropertiesFromResource("org/apache/tools/ant/types/defaults.properties");
+            } catch (IOException ioe) {
+                throw ExceptionUtil.wrap("Make sure that \"ant.jar\" is on the doclet's classpath", ioe);
             }
 
-            this.knownTypes = Mappings.fromMap(m);
+            for (Entry<Object, Object> e : properties.entrySet()) {
+                String typeName           = (String) e.getKey();
+                String qualifiedClassName = (String) e.getValue();
+
+                ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
+                if (cd == null) {
+
+                    // "defaults.properties" declares many "optional" types, so let's not complain if the type is
+                    // not on the classpath.
+                    //rootDoc.printError("Cannot load type \"" + qualifiedClassName + "\" for external HREF");
+                    continue;
+                }
+
+                m.put(cd, new Link(
+                    "<code>&lt;" + typeName + "&gt;</code>",
+                    "http://ant.apache.org/manual/Types/" + typeName + ".html"
+                ));
+            }
         }
+
+        this.externalAntdocs = Mappings.fromMap(m);
     }
 
     private Properties
@@ -785,7 +762,7 @@ class AntDoclet {
 
     private LinkMaker
     linkMaker(
-        @Nullable final AntType      antType,
+        final AntType                antType,
         @Nullable final AntTypeGroup typeGroup,
         final List<AntTypeGroup>     antTypeGroups,
         RootDoc                      rootDoc
@@ -796,9 +773,10 @@ class AntDoclet {
             @Override @Nullable public String
             makeHref(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
 
-                // Link to an ANT type?
                 if (to instanceof ClassDoc) {
                     ClassDoc toClass = (ClassDoc) to;
+
+                    // Link to another ANT type?
                     for (AntTypeGroup tg : antTypeGroups) {
                         for (AntType t : tg.types) {
                             if (toClass == t.classDoc) {
@@ -811,8 +789,18 @@ class AntDoclet {
                         }
                     }
 
-                    URL target = AntDoclet.this.externalAntdocs.get(to);
-                    if (target != null) return target.toString();
+                    // Link to external ANT task/type documentation?
+                    {
+                        Link link = AntDoclet.this.externalAntdocs.get(to);
+                        if (link != null) return link.href;
+                    }
+
+//                    // Link to a subelement of this ANT type?
+//                    for (AntSubelement se : antType.subelements) {
+//                        if (toClass == se.type) {
+//                            return "#" + toClass.qualifiedName() + "_detail";
+//                        }
+//                    }
 
                     rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
                     throw new Longjump();
@@ -843,9 +831,9 @@ class AntDoclet {
                             for (AntSubelement s : t.subelements) {
                                 if (s.methodDoc == toMethod) {
                                     String fragment = (
-                                        "#<"
+                                        '#'
                                         + (s.name != null ? s.name : s.type.asClassDoc().qualifiedName())
-                                        + '>'
+                                        + "_detail"
                                     );
                                     return (
                                         antType == null ? tg.name + '/' + t.name + fragment :
@@ -880,18 +868,26 @@ class AntDoclet {
 
                 if (to instanceof ClassDoc) {
                     ClassDoc toClass = (ClassDoc) to;
+
+                    // Link to an ANT type?
                     for (AntTypeGroup atg : antTypeGroups) {
                         for (AntType t : atg.types) {
                             if (toClass == t.classDoc) return "&lt;" + t.name + "&gt;";
                         }
                     }
 
-                    String antTypeName = AntDoclet.this.knownTypes.get(toClass.qualifiedName());
-                    if (antTypeName != null) return "&lt;" + antTypeName + "&gt;";
-
-                    if ("org.apache.tools.ant.types.ResourceCollection".equals(toClass.qualifiedName())) {
-                        return "resource collection";
+                    // Link to external ANT task/type documentation?
+                    {
+                        Link link = AntDoclet.this.externalAntdocs.get(toClass);
+                        if (link != null) return "<code>&lt;" + link.label + "&gt;</code>";
                     }
+
+//                    // Link to a subelement of this ANT type?
+//                    for (AntSubelement se : antType.subelements) {
+//                        if (toClass == se.type) {
+//                            return "<code>&lt;" + se.name + "&gt;</code>";
+//                        }
+//                    }
                 }
 
                 if (to instanceof MethodDoc) {
