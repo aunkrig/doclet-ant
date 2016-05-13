@@ -232,7 +232,7 @@ class TypeHtml extends AbstractDetailHtml {
                 if (subelement.methodDoc.tags("@deprecated").length > 0) firstSentence = "(deprecated)";
 
                 SectionItem subelementSectionItem = new SectionItem();
-                subelementSectionItem.anchor             = stqn;
+                subelementSectionItem.anchor             = name;
                 subelementSectionItem.summaryTableCells  = new String[] { name, firstSentence };
                 subelementSectionItem.detailTitle        = "<code>&lt;" + name + "&gt;</code>";
                 subelementSectionItem.printDetailContent = () -> {
@@ -312,80 +312,6 @@ class TypeHtml extends AbstractDetailHtml {
             },
             sections
         );
-//        super.rRightFrameHtml(
-//            typeGroup.typeTitleMf.format(new String[] { antType.name }), // windowTitle
-//            options,                                                     // options
-//            new String[] { "../stylesheet.css", "../stylesheet2.css" },  // stylesheetLinks
-//            new String[] {                                               // nav1
-//                "Overview",         home + "../overview-summary.html",
-//                "Task",             (
-//                    typeGroup.typeGroupHeading.equals("Tasks")
-//                    ? AbstractRightFrameHtml.HIGHLIT
-//                    : AbstractRightFrameHtml.DISABLED
-//                ),
-//                "Type",             (
-//                    typeGroup.typeGroupHeading.equals("Types")
-//                    ? AbstractRightFrameHtml.HIGHLIT
-//                    : AbstractRightFrameHtml.DISABLED
-//                ),
-//                "Chainable reader", (
-//                    typeGroup.typeGroupHeading.equals("Chainable readers")
-//                    ? AbstractRightFrameHtml.HIGHLIT
-//                    : AbstractRightFrameHtml.DISABLED
-//                ),
-//                "Index",            home + "index-all.html",
-//            },
-//            new String[] {                                               // nav2
-//                TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupHeading, home, atwc.previous()),
-//                TypeHtml.antTypeLink("Next " + typeGroup.typeGroupHeading, home, atwc.next()),
-//            },
-//            new String[] {                                               // nav3
-//                "Frames",    home + "../index.html?tasks/" + antType.name + ".html",
-//                "No Frames", antType.name + ".html",
-//            },
-//            new String[] {                                               // nav4
-//                "All Classes", home + "alldefinitions-noframe.html",
-//            },
-//            null,                                                        // nav5
-//            new String[] {                                               // nav6
-//                "Character data", (
-//                    antType.characterData == null
-//                    ? AbstractRightFrameHtml.DISABLED
-//                    : "#character_data_detail"
-//                ),
-//                "Attributes",     (
-//                    attributes.isEmpty()
-//                    ? AbstractRightFrameHtml.DISABLED
-//                    : "#attribute_detail"
-//                ),
-//                "Subelements",    (
-//                    antType.subelements.isEmpty()
-//                    ? AbstractRightFrameHtml.DISABLED
-//                    : "#subelement_detail"
-//                ),
-//            },
-//            () -> {
-//                String typeTitle   = typeGroup.typeTitleMf.format(new String[] { antType.name });
-//                String typeHeading = typeGroup.typeHeadingMf.format(new String[] { antType.name });
-//                TypeHtml.this.l(
-//"<div class=\"header\">",
-//"  <div class=\"subTitle\">" + HtmlTemplate.esc(typeGroup.typeGroupHeading) + "</div>",
-//"  <h2 title=\"" + typeTitle + "\" class=\"title\">" + typeHeading +  "</h2>",
-//"</div>",
-//"<div class=\"contentContainer\">",
-//"  <div class=\"description\">"
-//                );
-//
-//                try {
-//                    TypeHtml.this.printType(antType, html, rootDoc, new HashSet<ClassDoc>());
-//                } catch (Longjump l) {}
-//
-//                TypeHtml.this.l(
-//"  </div>",
-//"</div>"
-//                );
-//            }
-//        );
     }
 
     private static String
