@@ -814,6 +814,17 @@ class AntDoclet {
 
 //                            if (t.classDoc != toClass) continue;
 
+                            // Link to the "addText()" method (of the same or a different ANT type)?
+                            if (toMethod == t.characterData) {
+                                String fragment = "#text_summary";
+                                return (
+                                    antType == null ? tg.name + '/' + t.name + fragment :
+                                    toClass == antType.classDoc ? fragment :
+                                    typeGroup == tg ? t.name + fragment :
+                                    "../" + tg.name + '/' + t.name + fragment
+                                );
+                            }
+
                             // Link to an attribute (of the same or a different ANT type)?
                             for (AntAttribute a : t.attributes) {
                                 if (a.methodDoc == toMethod) {
@@ -894,9 +905,13 @@ class AntDoclet {
                     MethodDoc toMethod = (MethodDoc) to;
                     for (AntTypeGroup atg : antTypeGroups) {
                         for (AntType t : atg.types) {
+
+                            if (t.characterData == toMethod) return "(text between start and end tag)";
+
                             for (AntAttribute a : t.attributes) {
                                 if (a.methodDoc == toMethod) return a.name + "=\"...\"";
                             }
+
                             for (AntSubelement s : t.subelements) {
                                 if (s.methodDoc == toMethod) return "&lt;" + s.name + "&gt;";
                             }
