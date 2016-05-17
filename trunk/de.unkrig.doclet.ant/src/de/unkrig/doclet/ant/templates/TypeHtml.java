@@ -137,9 +137,9 @@ class TypeHtml extends AbstractDetailHtml {
                     Collection<AntAttribute> sss = seeSources.get(a);
                     if (sss == null) sss = Collections.emptyList();
 
-                    String summaryTitle = a.name;
+                    String summaryTitle = attributeSummaryTitle(a);
                     for (AntAttribute sa : sss) {
-                        summaryTitle += ", " + sa.name;
+                        summaryTitle += ", " + attributeSummaryTitle(sa);
                     }
 
                     String detailTitle = TypeHtml.attributeTerm(a, html, rootDoc);
@@ -154,7 +154,7 @@ class TypeHtml extends AbstractDetailHtml {
                         firstSentence = "???";
                     }
 
-                    String description;
+                    String detailContent;
                     {
                         String tmp;
                         try {
@@ -162,14 +162,14 @@ class TypeHtml extends AbstractDetailHtml {
                         } catch (Longjump l) {
                             tmp = "???";
                         }
-                        description = tmp;
+                        detailContent = tmp;
                     }
 
                     SectionItem sectionItem = new SectionItem();
                     sectionItem.anchor             = a.name;
                     sectionItem.summaryTableCells  = new String[] { summaryTitle, firstSentence };
                     sectionItem.detailTitle        = detailTitle;
-                    sectionItem.printDetailContent = () -> { TypeHtml.this.p(description); };
+                    sectionItem.printDetailContent = () -> { TypeHtml.this.p(detailContent); };
 
                     attributeSectionItems.add(sectionItem);
                 }
@@ -199,13 +199,14 @@ class TypeHtml extends AbstractDetailHtml {
                 ClassDoc subelementTypeClassDoc = subelement.type.asClassDoc();
                 String   stqn                   = subelementTypeClassDoc.qualifiedName();
 
-                String name;
+                String anchor, summaryNameHtml;
                 if (subelement.name != null) {
-                    name = subelement.name;
+                    anchor = subelement.name;
+                    summaryNameHtml = "<code>&lt;" + subelement.name + "&gt;</code>";
                 } else {
-                    name = stqn;
+                    anchor = stqn;
                     try {
-                        name = "Any <code>" + html.makeLink(
+                        summaryNameHtml = "Any <code>" + html.makeLink(
                             subelementTypeClassDoc, // from
                             subelementTypeClassDoc, // to
                             false,                  // plain
@@ -214,7 +215,7 @@ class TypeHtml extends AbstractDetailHtml {
                             rootDoc                 // rootDoc
                         ) + "</code>";
                     } catch (Longjump l) {
-                        name = "Any <code>" + stqn + "</code>";
+                        summaryNameHtml = "Any <code>" + stqn + "</code>";
                     }
                 }
 
@@ -232,9 +233,9 @@ class TypeHtml extends AbstractDetailHtml {
                 if (subelement.methodDoc.tags("@deprecated").length > 0) firstSentence = "(deprecated)";
 
                 SectionItem subelementSectionItem = new SectionItem();
-                subelementSectionItem.anchor             = name;
-                subelementSectionItem.summaryTableCells  = new String[] { name, firstSentence };
-                subelementSectionItem.detailTitle        = "<code>&lt;" + name + "&gt;</code>";
+                subelementSectionItem.anchor             = anchor;
+                subelementSectionItem.summaryTableCells  = new String[] { summaryNameHtml, firstSentence };
+                subelementSectionItem.detailTitle        = summaryNameHtml;
                 subelementSectionItem.printDetailContent = () -> {
                     TypeHtml.this.printSubelement2(
                         atwc.current().classDoc, // from
@@ -306,7 +307,7 @@ class TypeHtml extends AbstractDetailHtml {
                 @Override public void
                 run() {
                     try {
-                        TypeHtml.this.p(html.fromTags(antType.classDoc.inlineTags(), antType.classDoc, rootDoc));
+                        TypeHtml.this.p(html.generateFor(antType.classDoc, rootDoc));
                     } catch (Longjump l) {}
                 }
             },
@@ -459,6 +460,11 @@ class TypeHtml extends AbstractDetailHtml {
 "      </dd>"
             );
         } catch (Longjump l) {}
+    }
+
+    private static String
+    attributeSummaryTitle(AntAttribute attribute) {
+        return "<code>" + attribute.name + "=\"...\"</code>";
     }
 
     private static String
