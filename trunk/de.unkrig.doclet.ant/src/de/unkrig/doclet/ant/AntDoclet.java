@@ -762,7 +762,7 @@ class AntDoclet {
 
     private LinkMaker
     linkMaker(
-        final AntType                antType,
+        @Nullable final AntType      antType,
         @Nullable final AntTypeGroup typeGroup,
         final List<AntTypeGroup>     antTypeGroups,
         RootDoc                      rootDoc
