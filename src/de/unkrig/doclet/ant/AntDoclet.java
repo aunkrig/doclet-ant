@@ -64,6 +64,7 @@ import com.sun.javadoc.Type;
 import de.unkrig.commons.doclet.Docs;
 import de.unkrig.commons.doclet.Tags;
 import de.unkrig.commons.doclet.html.Html;
+import de.unkrig.commons.doclet.html.Html.Link;
 import de.unkrig.commons.doclet.html.Html.LinkMaker;
 import de.unkrig.commons.io.IoUtil;
 import de.unkrig.commons.lang.AssertionUtil;
@@ -128,17 +129,6 @@ class AntDoclet {
     private final File                             antlibFile;
     private final Map<String /*packageName*/, URL> externalJavadocs;
     private final Theme                            theme;
-
-    public static final
-    class Link {
-
-        public final String label, href;
-
-        public Link(String label, String href) {
-            this.label = label;
-            this.href  = href;
-        }
-    }
 
     /**
      * Documentation URLs for well-known ANT tasks and types.
@@ -770,157 +760,184 @@ class AntDoclet {
 
         return new LinkMaker() {
 
-            @Override @Nullable public String
-            makeHref(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
+            @Override public Link
+            makeLink(Doc from, Doc to, RootDoc rootDoc) throws Longjump {
 
-                if (to instanceof ClassDoc) {
-                    ClassDoc toClass = (ClassDoc) to;
+                String href;
+                HREF: {
+                    if (to instanceof ClassDoc) {
+                        ClassDoc toClass = (ClassDoc) to;
 
-                    // Link to another ANT type?
-                    for (AntTypeGroup tg : antTypeGroups) {
-                        for (AntType t : tg.types) {
-                            if (toClass == t.classDoc) {
-                                return (
-                                    antType == null ? tg.name + '/' + t.name + ".html" :
-                                    tg == typeGroup ? t.name + ".html" :
-                                    "../" + tg.name + '/' + t.name + ".html"
-                                );
+                        // Link to another ANT type?
+                        for (AntTypeGroup tg : antTypeGroups) {
+                            for (AntType t : tg.types) {
+                                if (toClass == t.classDoc) {
+                                    href = (
+                                        antType == null ? tg.name + '/' + t.name + ".html" :
+                                        tg == typeGroup ? t.name + ".html" :
+                                        "../" + tg.name + '/' + t.name + ".html"
+                                    );
+                                    break HREF;
+                                }
                             }
                         }
-                    }
 
-                    // Link to external ANT task/type documentation?
-                    {
-                        Link link = AntDoclet.this.externalAntdocs.get(to);
-                        if (link != null) return link.href;
-                    }
-
-//                    // Link to a subelement of this ANT type?
-//                    for (AntSubelement se : antType.subelements) {
-//                        if (toClass == se.type) {
-//                            return "#" + toClass.qualifiedName() + "_detail";
-//                        }
-//                    }
-
-                    rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
-                    throw new Longjump();
-                }
-
-                if (to instanceof MethodDoc) {
-                    MethodDoc toMethod = (MethodDoc) to;
-                    ClassDoc  toClass  = toMethod.containingClass();
-                    for (AntTypeGroup tg : antTypeGroups) {
-                        for (AntType t : tg.types) {
-
-//                            if (t.classDoc != toClass) continue;
-
-                            // Link to the "addText()" method (of the same or a different ANT type)?
-                            if (toMethod == t.characterData) {
-                                String fragment = "#text_summary";
-                                return (
-                                    antType == null ? tg.name + '/' + t.name + fragment :
-                                    toClass == antType.classDoc ? fragment :
-                                    typeGroup == tg ? t.name + fragment :
-                                    "../" + tg.name + '/' + t.name + fragment
-                                );
+                        // Link to external ANT task/type documentation?
+                        {
+                            Link link = AntDoclet.this.externalAntdocs.get(to);
+                            if (link != null) {
+                                href = link.href;
+                                break HREF;
                             }
+                        }
 
-                            // Link to an attribute (of the same or a different ANT type)?
-                            for (AntAttribute a : t.attributes) {
-                                if (a.methodDoc == toMethod) {
-                                    String fragment = '#' + a.name;
-                                    return (
+    //                    // Link to a subelement of this ANT type?
+    //                    for (AntSubelement se : antType.subelements) {
+    //                        if (toClass == se.type) {
+    //                            return "#" + toClass.qualifiedName() + "_detail";
+    //                        }
+    //                    }
+
+                        rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
+                        throw new Longjump();
+                    }
+
+                    if (to instanceof MethodDoc) {
+                        MethodDoc toMethod = (MethodDoc) to;
+                        ClassDoc  toClass  = toMethod.containingClass();
+                        for (AntTypeGroup tg : antTypeGroups) {
+                            for (AntType t : tg.types) {
+
+    //                            if (t.classDoc != toClass) continue;
+
+                                // Link to the "addText()" method (of the same or a different ANT type)?
+                                if (toMethod == t.characterData) {
+                                    String fragment = "#text_summary";
+                                    href = (
                                         antType == null ? tg.name + '/' + t.name + fragment :
                                         toClass == antType.classDoc ? fragment :
                                         typeGroup == tg ? t.name + fragment :
                                         "../" + tg.name + '/' + t.name + fragment
                                     );
+                                    break HREF;
+                                }
+
+                                // Link to an attribute (of the same or a different ANT type)?
+                                for (AntAttribute a : t.attributes) {
+                                    if (a.methodDoc == toMethod) {
+                                        String fragment = '#' + a.name;
+                                        href = (
+                                            antType == null ? tg.name + '/' + t.name + fragment :
+                                            toClass == antType.classDoc ? fragment :
+                                            typeGroup == tg ? t.name + fragment :
+                                            "../" + tg.name + '/' + t.name + fragment
+                                        );
+                                        break HREF;
+                                    }
+                                }
+
+                                // Link to a subelement (of the same or a different ANT type)?
+                                for (AntSubelement s : t.subelements) {
+                                    if (s.methodDoc == toMethod) {
+                                        String fragment = (
+                                            '#'
+                                            + (s.name != null ? s.name : s.type.asClassDoc().qualifiedName())
+                                            + "_detail"
+                                        );
+                                        href = (
+                                            antType == null ? tg.name + '/' + t.name + fragment :
+                                            toMethod.containingClass() == antType.classDoc ? fragment :
+                                            typeGroup == tg ? antType.name + fragment :
+                                            "../" + tg.name + '/' + antType.name + fragment
+                                        );
+                                        break HREF;
+                                    }
                                 }
                             }
+                        }
 
-                            // Link to a subelement (of the same or a different ANT type)?
-                            for (AntSubelement s : t.subelements) {
-                                if (s.methodDoc == toMethod) {
-                                    String fragment = (
-                                        '#'
-                                        + (s.name != null ? s.name : s.type.asClassDoc().qualifiedName())
-                                        + "_detail"
-                                    );
-                                    return (
-                                        antType == null ? tg.name + '/' + t.name + fragment :
-                                        toMethod.containingClass() == antType.classDoc ? fragment :
-                                        typeGroup == tg ? antType.name + fragment :
-                                        "../" + tg.name + '/' + antType.name + fragment
-                                    );
+                        rootDoc.printWarning(from.position(), (
+                            "Linking from '"
+                            + from
+                            + "' to '"
+                            + to
+                            + "': "
+                            + toMethod
+                            + "' is not an attribute setter nor a subelement adder/creator"
+                        ));
+                        href = null;
+                        break HREF;
+                    }
+
+                    // Leave references to other elements, e.g. enum constants or constants, "unlinked", i.e. print
+                    // the bare label without "<a href=...>".
+                    href = null;
+                }
+
+                String defaultLabelHtml;
+                DEFAULT_LABEL_HTML: {
+                    if (to instanceof ClassDoc) {
+                        ClassDoc toClass = (ClassDoc) to;
+
+                        // Link to an ANT type?
+                        for (AntTypeGroup atg : antTypeGroups) {
+                            for (AntType t : atg.types) {
+                                if (toClass == t.classDoc) {
+                                    defaultLabelHtml = "&lt;" + t.name + "&gt;";
+                                    break DEFAULT_LABEL_HTML;
+                                }
+                            }
+                        }
+
+                        // Link to external ANT task/type documentation?
+                        {
+                            Link link = AntDoclet.this.externalAntdocs.get(toClass);
+                            if (link != null) {
+                                defaultLabelHtml = "<code>&lt;" + link.defaultLabelHtml + "&gt;</code>";
+                                break DEFAULT_LABEL_HTML;
+                            }
+                        }
+
+    //                    // Link to a subelement of this ANT type?
+    //                    for (AntSubelement se : antType.subelements) {
+    //                        if (toClass == se.type) {
+    //                            return "<code>&lt;" + se.name + "&gt;</code>";
+    //                        }
+    //                    }
+                    }
+
+                    if (to instanceof MethodDoc) {
+                        MethodDoc toMethod = (MethodDoc) to;
+                        for (AntTypeGroup atg : antTypeGroups) {
+                            for (AntType t : atg.types) {
+
+                                if (t.characterData == toMethod) {
+                                    defaultLabelHtml = "(text between start and end tag)";
+                                    break DEFAULT_LABEL_HTML;
+                                }
+
+                                for (AntAttribute a : t.attributes) {
+                                    if (a.methodDoc == toMethod) {
+                                        defaultLabelHtml = a.name + "=\"...\"";
+                                        break DEFAULT_LABEL_HTML;
+                                    }
+                                }
+
+                                for (AntSubelement s : t.subelements) {
+                                    if (s.methodDoc == toMethod) {
+                                        defaultLabelHtml = "&lt;" + s.name + "&gt;";
+                                        break DEFAULT_LABEL_HTML;
+                                    }
                                 }
                             }
                         }
                     }
 
-                    rootDoc.printWarning(from.position(), (
-                        "Linking from '"
-                        + from
-                        + "' to '"
-                        + to
-                        + "': "
-                        + toMethod
-                        + "' is not an attribute setter nor a subelement adder/creator"
-                    ));
-                    return null;
+                    // For references to other elements, e.g. enum constants or constants, return the element's name.
+                    defaultLabelHtml = to.name();
                 }
 
-                // Leave references to other elements, e.g. enum constants or constants, "unlinked", i.e. print
-                // the bare label without "<a href=...>".
-                return null;
-            }
-
-            @Override public String
-            makeDefaultLabel(Doc from, Doc to, RootDoc rootDoc) {
-
-                if (to instanceof ClassDoc) {
-                    ClassDoc toClass = (ClassDoc) to;
-
-                    // Link to an ANT type?
-                    for (AntTypeGroup atg : antTypeGroups) {
-                        for (AntType t : atg.types) {
-                            if (toClass == t.classDoc) return "&lt;" + t.name + "&gt;";
-                        }
-                    }
-
-                    // Link to external ANT task/type documentation?
-                    {
-                        Link link = AntDoclet.this.externalAntdocs.get(toClass);
-                        if (link != null) return "<code>&lt;" + link.label + "&gt;</code>";
-                    }
-
-//                    // Link to a subelement of this ANT type?
-//                    for (AntSubelement se : antType.subelements) {
-//                        if (toClass == se.type) {
-//                            return "<code>&lt;" + se.name + "&gt;</code>";
-//                        }
-//                    }
-                }
-
-                if (to instanceof MethodDoc) {
-                    MethodDoc toMethod = (MethodDoc) to;
-                    for (AntTypeGroup atg : antTypeGroups) {
-                        for (AntType t : atg.types) {
-
-                            if (t.characterData == toMethod) return "(text between start and end tag)";
-
-                            for (AntAttribute a : t.attributes) {
-                                if (a.methodDoc == toMethod) return a.name + "=\"...\"";
-                            }
-
-                            for (AntSubelement s : t.subelements) {
-                                if (s.methodDoc == toMethod) return "&lt;" + s.name + "&gt;";
-                            }
-                        }
-                    }
-                }
-
-                // For references to other elements, e.g. enum constants or constants, return the element's name.
-                return to.name();
+                return new Link(href, defaultLabelHtml);
             }
         };
     }
