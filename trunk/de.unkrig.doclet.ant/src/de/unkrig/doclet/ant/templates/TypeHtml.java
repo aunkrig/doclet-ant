@@ -73,14 +73,13 @@ class TypeHtml extends AbstractDetailHtml {
     public void
     render(
         final AntTypeGroup                typeGroup,
+        Collection<AntTypeGroup>          allTypeGroups,
         final ElementWithContext<AntType> atwc,
         final Html                        html,
         final RootDoc                     rootDoc,
         Options                           options
     ) {
         AntType antType = atwc.current();
-
-        String home = "";
 
         List<Section> sections = new ArrayList<AbstractDetailHtml.Section>();
 
@@ -201,7 +200,7 @@ class TypeHtml extends AbstractDetailHtml {
 
                 String anchor, summaryNameHtml;
                 if (subelement.name != null) {
-                    anchor = subelement.name;
+                    anchor          = subelement.name;
                     summaryNameHtml = "<code>&lt;" + subelement.name + "&gt;</code>";
                 } else {
                     anchor = stqn;
@@ -261,46 +260,37 @@ class TypeHtml extends AbstractDetailHtml {
             sections.add(subelementsSection);
         }
 
+        String home = "";
+
+        // Compose the "nav1" from all the ant type groups (tasks, types, chainable readers, ...).
+        List<String> nav1 = new ArrayList<>();
+        nav1.add("Overview");
+        nav1.add(home + "../overview-summary.html");
+        for (AntTypeGroup atg : allTypeGroups) {
+            if (atg.types.isEmpty()) continue;
+            nav1.add(atg.name);
+            nav1.add(atg == typeGroup ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED);
+        }
+        nav1.add("Index");
+        nav1.add(home + "index-all.html");
+
         super.rDetail(
             typeGroup.typeTitleMf.format(new String[] { antType.name }),   // windowTitle
             options,                                                       // options
             new String[] { "../stylesheet.css", "../stylesheet2.css" },    // stylesheetLinks
-            new String[] {                                                 // nav1
-                "Overview",            home + "../overview-summary.html",
-                "Task",                (
-                    typeGroup.typeGroupName.equals("Task")
-                    ? AbstractRightFrameHtml.HIGHLIT
-                    : AbstractRightFrameHtml.DISABLED
-                ),
-                "Resource collection", (
-                    typeGroup.typeGroupName.equals("Resource collection")
-                    ? AbstractRightFrameHtml.HIGHLIT
-                    : AbstractRightFrameHtml.DISABLED
-                ),
-                "Chainable reader",    (
-                    typeGroup.typeGroupName.equals("Chainable reader")
-                    ? AbstractRightFrameHtml.HIGHLIT
-                    : AbstractRightFrameHtml.DISABLED
-                ),
-                "Condition",           (
-                    typeGroup.typeGroupName.equals("Condition")
-                    ? AbstractRightFrameHtml.HIGHLIT
-                    : AbstractRightFrameHtml.DISABLED
-                ),
-                "Index",               home + "index-all.html",
-            },
+            nav1.toArray(new String[nav1.size()]),                         // nav1
             new String[] {                                                 // nav2
-                TypeHtml.antTypeLink("Prev " + typeGroup.typeGroupName, home, atwc.previous()),
-                TypeHtml.antTypeLink("Next " + typeGroup.typeGroupName, home, atwc.next()),
+                TypeHtml.antTypeLink("Prev " + typeGroup.name, home, atwc.previous()),
+                TypeHtml.antTypeLink("Next " + typeGroup.name, home, atwc.next()),
             },
             new String[] {                                                 // nav3
-                "Frames",    home + "../index.html?" + typeGroup.name + "/" + antType.name + ".html",
+                "Frames",    home + "../index.html?" + typeGroup.subdir + "/" + antType.name + ".html",
                 "No Frames", antType.name + ".html",
             },
             new String[] {                                                 // nav4
                 "All Definitions", home + "alldefinitions-noframe.html",
             },
-            HtmlTemplate.esc(typeGroup.typeGroupName),                     // subtitle
+            HtmlTemplate.esc(typeGroup.name),                              // subtitle
             typeGroup.typeHeadingMf.format(new String[] { antType.name }), // title
             new Runnable() {                                               // prolog
 
@@ -436,8 +426,8 @@ class TypeHtml extends AbstractDetailHtml {
         AntAttribute             primaryAttribute,
         Collection<AntAttribute> alternativeAttributes,
         final Html               html,
-        final RootDoc
-    rootDoc) {
+        final RootDoc            rootDoc
+    ) {
 
         this.l(
 "      <dt class=\"ant-attribute-term\">" + TypeHtml.attributeTerm(primaryAttribute, html, rootDoc) + "</dt>"
@@ -669,7 +659,7 @@ class TypeHtml extends AbstractDetailHtml {
         }
 
         String suffix = mandatory ? " (mandatory)" : "";
-        return "        <a name=\"" + attribute.name + "\" /><code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix;
+        return "<a name=\"" + attribute.name + "\" /><code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix;
     }
 
     private void
@@ -857,7 +847,8 @@ class TypeHtml extends AbstractDetailHtml {
         }
     }
 
-    private void printAttributes2(List<AntAttribute> attributes, Html html, RootDoc rootDoc) {
+    private void
+    printAttributes2(List<AntAttribute> attributes, Html html, RootDoc rootDoc) {
 
         Map<AntAttribute, Collection<AntAttribute>>
         seeSources = new HashMap<AntDoclet.AntAttribute, Collection<AntAttribute>>();

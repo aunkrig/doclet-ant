@@ -26,7 +26,7 @@
 
 package de.unkrig.doclet.ant.templates;
 
-import java.util.List;
+import java.util.Collection;
 
 import com.sun.javadoc.RootDoc;
 
@@ -47,7 +47,7 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
      * Renders the contents of the "All Definitions" frame.
      */
     public void
-    render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
+    render(final Collection<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
 
         super.rBottomLeftFrameHtml(
             "All types",                       // heading
@@ -64,7 +64,7 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
                     if (typeGroup.types.isEmpty()) continue;
 
                     AllDefinitionsHtml.this.l(
-"      <dt>" + typeGroup.typeGroupHeading + "</dt>"
+"      <dt>" + typeGroup.heading + "</dt>"
                     );
 
                     for (final AntType antType : typeGroup.types) {

@@ -33,8 +33,10 @@ import java.io.InputStream;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -268,59 +270,58 @@ class AntDoclet {
         /**
          * E.g. {@code "tasks"}
          */
-        public final String name;
-
-        /**
-         * The ANT types that comprise the group.
-         */
-        public final List<AntType> types;
+        public final String subdir;
 
         /**
          * E.g. {@code "Task"}
          */
-        public final String typeGroupName;
+        public final String name;
 
         /**
          * E.g. {@code "Tasks"}
          */
-        public final String typeGroupHeading;
+        public final String heading;
 
         /**
-         * E.g. <code>"Task \"&amp;lt{0}&amp;gt;\""</code>
+         * E.g. <code>"Task &amp;quot;&amp;lt;{0}&amp;gt;&amp;quot;"</code>
          */
         public final MessageFormat typeTitleMf;
 
         /**
-         * E.g. <code>"Task \"&lt;code>&amp;lt;{0}&amp;gt;&lt;/code>\""}
+         * E.g. {@code "Task &amp;quot;&lt;code>&lt;{0}&gt;&lt;/code>&amp;quot;"}
          */
         public final MessageFormat typeHeadingMf;
 
         /**
-         * @param typeGroupName    E.g. {@code "Task"}; may contain inline tags
-         * @param typeGroupHeading E.g. {@code "Tasks"}; may contain inline tags
-         * @param typeTitleMf      Must not contain any inline tags; "<code>{0}</code>" maps to the type name
-         * @param typeHeadingMf    May contain inline tags; "<code>{0}</code>" maps to the type name
+         * The ANT types that comprise the group.
+         */
+        public final List<AntType> types = new ArrayList<>();
+
+        /**
+         * @param subdir        E.g. {@code "tasks"}
+         * @param name          E.g. {@code "Task"}; may contain inline tags
+         * @param heading       E.g. {@code "Tasks"}; may contain inline tags
+         * @param typeTitleMf   Must not contain any inline tags; "<code>{0}</code>" maps to the type name
+         * @param typeHeadingMf May contain inline tags; "<code>{0}</code>" maps to the type name
          */
         public
         AntTypeGroup(
-            String        name,
-            List<AntType> types,
-            String        typeGroupName,
-            String        typeGroupHeading,
-            String        typeTitleMf,
-            String        typeHeadingMf
+            String subdir,
+            String name,
+            String heading,
+            String typeTitleMf,
+            String typeHeadingMf
         ) {
-            this.name             = name;
-            this.types            = types;
-            this.typeGroupName    = typeGroupName;
-            this.typeGroupHeading = typeGroupHeading;
-            this.typeTitleMf      = new MessageFormat(typeTitleMf);
-            this.typeHeadingMf    = new MessageFormat(typeHeadingMf);
+            this.subdir        = subdir;
+            this.name          = name;
+            this.heading       = heading;
+            this.typeTitleMf   = new MessageFormat(typeTitleMf);
+            this.typeHeadingMf = new MessageFormat(typeHeadingMf);
         }
 
         @Override public String
         toString() {
-            return this.name;
+            return this.subdir;
         }
     }
 
@@ -605,20 +606,54 @@ class AntDoclet {
 
         document.getDocumentElement().normalize();
 
-        final List<AntType> tasks               = new ArrayList<AntType>();
-        final List<AntType> resourceCollections = new ArrayList<AntType>();
-        final List<AntType> chainableReaders    = new ArrayList<AntType>();
-        final List<AntType> conditions          = new ArrayList<AntType>();
-        final List<AntType> otherTypes          = new ArrayList<AntType>();
+        final LinkedHashMap<ClassDoc, AntTypeGroup> antTypeGroups = new LinkedHashMap<>();
+        AntTypeGroup                                antTypeGroupTasks, antTypeGroupOther;
+        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.Task"), (antTypeGroupTasks = new AntTypeGroup(
+            "tasks",
+            "Task", // typeGroupName
+            "Tasks",
+            "Task \"&lt;{0}&gt;\"",
+            "<code>&lt;{0}&gt;</code>"
+        )));
+        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.types.ResourceCollection"), new AntTypeGroup(
+            "resourceCollections",
+            "Resource collection", // typeGroupName
+            "Resource collections",
+            "Resource collection \"&lt;{0}&gt;\"",
+            "<code>&lt;{0}&gt;</code>"
+        ));
+        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.filters.ChainableReader"), new AntTypeGroup(
+            "chainableReaders",
+            "Chainable reader", // typeGroupName
+            "Chainable readers",
+            "Chainable reader \"&lt;{0}&gt;\"",
+            "<code>&lt;{0}&gt;</code>"
+        ));
+        antTypeGroups.put(
+            this.rootDoc.classNamed("org.apache.tools.ant.taskdefs.condition.Condition"),
+            new AntTypeGroup(
+                "conditions",
+                "Condition", // typeGroupName
+                "Conditions",
+                "Condition \"&lt;{0}&gt;\"",
+                "<code>&lt;{0}&gt;</code>"
+            )
+        );
+        antTypeGroups.put(null, (antTypeGroupOther = new AntTypeGroup(
+            "otherTypes",
+            "Other type", // typeGroupName
+            "Other types",
+            "Type \"&lt;{0}&gt;\"",
+            "<code>&lt;{0}&gt;</code>"
+        )));
 
         // Now parse the contents of the given ANTLIB file; see
         // https://ant.apache.org/manual/Types/antlib.html
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
             try {
-                tasks.add(AntDoclet.parseType(taskdefElement, this.rootDoc));
+                antTypeGroups.get(antTypeGroupTasks.types.add(AntDoclet.parseType(taskdefElement, this.rootDoc)));
             } catch (Longjump l) {}
         }
-
         for (Element typedefElement : IterableUtil.concat(
             AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
             AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
@@ -630,112 +665,87 @@ class AntDoclet {
                 continue;
             }
 
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.Task", this.rootDoc)) {
-                tasks.add(type);
-            } else
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.types.ResourceCollection", this.rootDoc)) {
-                resourceCollections.add(type);
-            } else
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.filters.ChainableReader", this.rootDoc)) {
-                chainableReaders.add(type);
-            } else
-            if (AntDoclet.typeIs(type, "org.apache.tools.ant.taskdefs.condition.Condition", this.rootDoc)) {
-                conditions.add(type);
-            } else
-            {
-                otherTypes.add(type);
+            boolean hadOneTypeGroup = false;
+            for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(type.classDoc)) {
+
+                AntTypeGroup atg = antTypeGroups.get(cd);
+                if (atg == null) {
+
+                    String typeGroupSubdir  = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
+                    if (typeGroupSubdir == null) continue;
+                    String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc);
+                    String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc);
+                    String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc);
+                    String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc);
+
+                    antTypeGroups.put(cd, (atg = new AntTypeGroup(
+                        typeGroupSubdir,  // subdir
+                        typeGroupName,    // name
+                        typeGroupHeading, // heading
+                        typeTitleMf,      // typeTitleMf
+                        typeHeadingMf     // typeHeadingMf
+                    )));
+                }
+
+                atg.types.add(type);
+                hadOneTypeGroup = true;
             }
+
+            if (!hadOneTypeGroup) antTypeGroupOther.types.add(type);
+        }
+        if (document.getElementsByTagName("macrodef").getLength() > 0) {
+            this.rootDoc.printWarning("<macrodef>s are not yet supported");
+        }
+        if (document.getElementsByTagName("presetdef").getLength() > 0) {
+            this.rootDoc.printWarning("<presetdef>s are not yet supported");
+        }
+        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+            this.rootDoc.printWarning("<scriptdef>s are not yet supported");
         }
 
-        final List<AntTypeGroup> antTypeGroups = new ArrayList<AntTypeGroup>();
-        antTypeGroups.add(new AntTypeGroup(
-            "tasks",
-            tasks,
-            "Task", // typeGroupName
-            "Tasks",
-            "Task \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
-        antTypeGroups.add(new AntTypeGroup(
-            "resourceCollections",
-            resourceCollections,
-            "Resource collection", // typeGroupName
-            "Resource collections",
-            "Resource collection \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
-        antTypeGroups.add(new AntTypeGroup(
-            "chainableReaders",
-            chainableReaders,
-            "Chainable reader", // typeGroupName
-            "Chainable readers",
-            "Chainable reader \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
-        antTypeGroups.add(new AntTypeGroup(
-            "conditions",
-            conditions,
-            "Condition", // typeGroupName
-            "Conditions",
-            "Condition \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
-        antTypeGroups.add(new AntTypeGroup(
-            "otherTypes",
-            otherTypes,
-            "Other type", // typeGroupName
-            "Other types",
-            "Type \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
-
-        for (final AntTypeGroup typeGroup : antTypeGroups) {
+        // Now render the type documentation pages, e.g. "tasks/myTask.html"
+        for (final AntTypeGroup typeGroup : antTypeGroups.values()) {
 
             for (final ElementWithContext<AntType> atwc : IterableUtil.iterableWithContext(typeGroup.types)) {
                 AntType antType = atwc.current();
 
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
-                final LinkMaker linkMaker = this.linkMaker(antType, typeGroup, antTypeGroups, this.rootDoc);
-
-                final Html html = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
+                final Html html = new Html(new Html.ExternalJavadocsLinkMaker(
+                    this.externalJavadocs,
+                    this.linkMaker(antType, typeGroup, antTypeGroups.values(), this.rootDoc)
+                ));
 
                 NoTemplate.render(
                     TypeHtml.class,
-                    new File(this.options.destination, typeGroup.name + '/' + antType.name + ".html"),
+                    new File(this.options.destination, typeGroup.subdir + '/' + antType.name + ".html"),
                     new ConsumerWhichThrows<TypeHtml, RuntimeException>() {
 
                         @Override public void
                         consume(TypeHtml typeHtml) throws RuntimeException {
-                            typeHtml.render(typeGroup, atwc, html, AntDoclet.this.rootDoc, AntDoclet.this.options);
+                            typeHtml.render(
+                                typeGroup,
+                                antTypeGroups.values(),
+                                atwc,
+                                html,
+                                AntDoclet.this.rootDoc,
+                                AntDoclet.this.options
+                            );
                         }
                     }
                 );
             }
         }
 
-        if (document.getElementsByTagName("macrodef").getLength() > 0) {
-            this.rootDoc.printWarning("<macrodef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("presetdef").getLength() > 0) {
-            this.rootDoc.printWarning("<presetdef>s are not yet supported");
-        }
-
-        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-            this.rootDoc.printWarning("<scriptdef>s are not yet supported");
-        }
-
-        final LinkMaker linkMaker = this.linkMaker(null, null, antTypeGroups, this.rootDoc);
-
-        final Html html = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
+        final LinkMaker linkMaker = this.linkMaker(null, null, antTypeGroups.values(), this.rootDoc);
+        final Html      html      = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
         NoTemplate.render(
             AllDefinitionsHtml.class,
             new File(this.options.destination, "alldefinitions-frame.html"),
             (AllDefinitionsHtml allDefinitionsHtml) -> {
-                allDefinitionsHtml.render(antTypeGroups, AntDoclet.this.rootDoc, AntDoclet.this.options, html);
+                allDefinitionsHtml.render(antTypeGroups.values(), AntDoclet.this.rootDoc, AntDoclet.this.options, html);
             }
         );
 
@@ -745,17 +755,22 @@ class AntDoclet {
             OverviewSummaryHtml.class,
             new File(this.options.destination, "overview-summary.html"),
             (OverviewSummaryHtml overviewSummaryHtml) -> {
-                overviewSummaryHtml.render(antTypeGroups, AntDoclet.this.rootDoc, AntDoclet.this.options, html);
+                overviewSummaryHtml.render(
+                    antTypeGroups.values(),
+                    AntDoclet.this.rootDoc,
+                    AntDoclet.this.options,
+                    html
+                );
             }
         );
     }
 
     private LinkMaker
     linkMaker(
-        @Nullable final AntType      antType,
-        @Nullable final AntTypeGroup typeGroup,
-        final List<AntTypeGroup>     antTypeGroups,
-        RootDoc                      rootDoc
+        @Nullable final AntType        antType,
+        @Nullable final AntTypeGroup   typeGroup,
+        final Collection<AntTypeGroup> antTypeGroups,
+        RootDoc                        rootDoc
     ) {
 
         return new LinkMaker() {
@@ -772,9 +787,9 @@ class AntDoclet {
                             if (toClass == t.classDoc) {
                                 return new Link(
                                     (
-                                        antType == null ? atg.name + '/' + t.name + ".html" :
+                                        antType == null ? atg.subdir + '/' + t.name + ".html" :
                                         atg == typeGroup ? t.name + ".html" :
-                                        "../" + atg.name + '/' + t.name + ".html"
+                                        "../" + atg.subdir + '/' + t.name + ".html"
                                     ),
                                     "&lt;" + t.name + "&gt;"
                                 );
@@ -818,10 +833,10 @@ class AntDoclet {
                                 String fragment = "#text_summary";
                                 return new Link(
                                     (
-                                        antType == null ? tg.name + '/' + t.name + fragment :
+                                        antType == null ? tg.subdir + '/' + t.name + fragment :
                                         toClass == antType.classDoc ? fragment :
                                         typeGroup == tg ? t.name + fragment :
-                                        "../" + tg.name + '/' + t.name + fragment
+                                        "../" + tg.subdir + '/' + t.name + fragment
                                     ),
                                     "(text between start and end tag)"
                                 );
@@ -833,10 +848,10 @@ class AntDoclet {
                                     String fragment = '#' + a.name;
                                     return new Link(
                                         (
-                                            antType == null ? tg.name + '/' + t.name + fragment :
+                                            antType == null ? tg.subdir + '/' + t.name + fragment :
                                             toClass == antType.classDoc ? fragment :
                                             typeGroup == tg ? t.name + fragment :
-                                            "../" + tg.name + '/' + t.name + fragment
+                                            "../" + tg.subdir + '/' + t.name + fragment
                                         ),
                                         a.name + "=\"...\""
                                     );
@@ -853,10 +868,10 @@ class AntDoclet {
                                     );
                                     return new Link(
                                         (
-                                            antType == null ? tg.name + '/' + t.name + fragment :
+                                            antType == null ? tg.subdir + '/' + t.name + fragment :
                                             toMethod.containingClass() == antType.classDoc ? fragment :
                                             typeGroup == tg ? antType.name + fragment :
-                                            "../" + tg.name + '/' + antType.name + fragment
+                                            "../" + tg.subdir + '/' + antType.name + fragment
                                         ),
                                         "&lt;" + s.name + "&gt;"
                                     );
