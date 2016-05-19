@@ -397,7 +397,7 @@ class TypeHtml extends AbstractDetailHtml {
                 List<AntSubelement> subelementsOfGroup = e.getValue();
 
                 this.l(
-"      <h5>" + (group == null ? "Other" : group) + "</h5>"
+"      <h6>" + (group == null ? "Other" : group) + ":</h6>"
                 );
 
                 for (AntSubelement attribute : subelementsOfGroup) {
@@ -843,7 +843,7 @@ class TypeHtml extends AbstractDetailHtml {
                 List<AntAttribute> attributesOfGroup = e.getValue();
 
                 this.l(
-"  <h5>" + (group == null ? "Other" : group) + "</h5>"
+"  <h6>" + (group == null ? "Other" : group) + ":</h6>"
                 );
 
                 this.l(
