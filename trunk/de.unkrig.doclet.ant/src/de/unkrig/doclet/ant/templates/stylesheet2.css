@@ -6,8 +6,12 @@
     font-weight:      bold;
 }
 
-.contentContainer .details dl dd {
+.contentContainer .details dl dt {
 	margin:           3px 10px 6px 10px;
+}
+
+.contentContainer .details dl dd {
+	margin:           3px 10px 6px 20px;
 }
 
 .ant-subelement-definition {
@@ -23,10 +27,29 @@
 	background-color: #f8f8f8;
 }
 
+code code {
+    font-size:        1em;
+}
+
+/*
+ * h5 and h6 are used inside the subelements' details.
+ */
 .details h5 {
+    font-size:        14px;
+	margin-bottom:    0px;
+}
+
+.details h6 {
+    font-size:        13px;
+    font-style:       italic;
+	margin-top:       20px;
 	margin-bottom:    8px;
 }
 
-code code {
-    font-size:        1em;
+/*
+ * For unknown reasons, the JAVA 8 JAVADOC stylesheet defines a monospace font for the DDs, which is definitely not
+ * what we want.
+ */
+.contentContainer .details dl dd {
+    font-family:      inherit;
 }
