@@ -26,7 +26,7 @@
 
 package de.unkrig.doclet.ant.templates;
 
-import java.util.List;
+import java.util.Collection;
 
 import com.sun.javadoc.RootDoc;
 
@@ -44,7 +44,12 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
     public void
-    render(final List<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, final Options options, final Html html) {
+    render(
+        final Collection<AntTypeGroup> antTypeGroups,
+        final RootDoc                  rootDoc,
+        final Options                  options,
+        final Html                     html
+    ) {
 
         super.rRightFrameHtml(
             "Overview",                        // windowTitle
@@ -83,7 +88,7 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
                     if (typeGroup.types.isEmpty()) continue;
 
                     OverviewSummaryHtml.this.l(
-"    <h2>" + typeGroup.typeGroupHeading + " summary</h2>",
+"    <h2>" + typeGroup.heading + " summary</h2>",
 "    <dl>"
                     );
                     for (final AntType antType : typeGroup.types) {
