@@ -136,9 +136,9 @@ class TypeHtml extends AbstractDetailHtml {
                     Collection<AntAttribute> sss = seeSources.get(a);
                     if (sss == null) sss = Collections.emptyList();
 
-                    String summaryTitle = attributeSummaryTitle(a);
+                    String summaryTitle = TypeHtml.attributeSummaryTitle(a);
                     for (AntAttribute sa : sss) {
-                        summaryTitle += ", " + attributeSummaryTitle(sa);
+                        summaryTitle += ", " + TypeHtml.attributeSummaryTitle(sa);
                     }
 
                     String detailTitle = TypeHtml.attributeTerm(a, html, rootDoc);
@@ -146,12 +146,7 @@ class TypeHtml extends AbstractDetailHtml {
                         detailTitle += ", " + TypeHtml.attributeTerm(sa, html, rootDoc);
                     }
 
-                    String firstSentence;
-                    try {
-                        firstSentence = html.fromTags(a.methodDoc.firstSentenceTags(), a.methodDoc, rootDoc);
-                    } catch (Longjump e) {
-                        firstSentence = "???";
-                    }
+                    String firstSentence = html.summaryDescription(a.methodDoc, rootDoc);
 
                     String detailContent;
                     {
