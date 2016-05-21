@@ -146,7 +146,7 @@ class TypeHtml extends AbstractDetailHtml {
                         detailTitle += ", " + TypeHtml.attributeTerm(sa, html, rootDoc);
                     }
 
-                    String firstSentence = html.summaryDescription(a.methodDoc, rootDoc);
+                    final String summaryDescription = html.summaryDescription(a.methodDoc, rootDoc);
 
                     String detailContent;
                     {
@@ -161,7 +161,7 @@ class TypeHtml extends AbstractDetailHtml {
 
                     SectionItem sectionItem = new SectionItem();
                     sectionItem.anchor             = a.name;
-                    sectionItem.summaryTableCells  = new String[] { summaryTitle, firstSentence };
+                    sectionItem.summaryTableCells  = new String[] { summaryTitle, summaryDescription };
                     sectionItem.detailTitle        = detailTitle;
                     sectionItem.printDetailContent = () -> { TypeHtml.this.p(detailContent); };
 
@@ -888,7 +888,7 @@ class TypeHtml extends AbstractDetailHtml {
         if (attribute.methodDoc.inlineTags().length == 0 && attribute.methodDoc.tags().length == 1) {
 
             Tag t = attribute.methodDoc.tags()[0];
-            if (t.name().equals("@see")) {
+            if ("@see".equals(t.name())) {
                 Doc targetDoc;
                 try {
                     targetDoc = Docs.findDoc(attribute.methodDoc, t.text(), rootDoc);
