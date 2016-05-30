@@ -55,36 +55,34 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
             options,                           // options
             new String[] { "stylesheet.css" }, // stylesheetLinks
             () -> {                            // renderBody
-                AllDefinitionsHtml.this.l(
-"    <dl>",
-""
-                );
                 for (AntTypeGroup typeGroup : antTypeGroups) {
 
                     if (typeGroup.types.isEmpty()) continue;
 
                     AllDefinitionsHtml.this.l(
-"      <dt>" + typeGroup.heading + "</dt>"
+"    <h2 title=\"" + typeGroup.heading + "\">" + typeGroup.heading + "</h2>",
+"    <ul title=\"" + typeGroup.heading + ">"
                     );
 
                     for (final AntType antType : typeGroup.types) {
                         try {
                             AllDefinitionsHtml.this.l(
-"      <dd><code>" + html.makeLink(
+"      <li>" + html.makeLink(
     rootDoc,           // from
     antType.classDoc,  // to
     false,             // plain
     null,              // label
     "classFrame",      // target
     rootDoc            // rootDoc
-) + "</code></dd>"
+) + "</li>"
                             );
                         } catch (Longjump l) {}
                     }
+
+                    AllDefinitionsHtml.this.l(
+"    </ul>"
+                    );
                 }
-                AllDefinitionsHtml.this.l(
-"    </dl>"
-                );
             }
         );
     }

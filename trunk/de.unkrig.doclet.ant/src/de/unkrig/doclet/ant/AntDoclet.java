@@ -61,6 +61,7 @@ import com.sun.javadoc.LanguageVersion;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.RootDoc;
+import com.sun.javadoc.Tag;
 import com.sun.javadoc.Type;
 
 import de.unkrig.commons.doclet.Docs;
@@ -71,6 +72,8 @@ import de.unkrig.commons.doclet.html.Html.LinkMaker;
 import de.unkrig.commons.io.IoUtil;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.ExceptionUtil;
+import de.unkrig.commons.lang.ObjectUtil;
+import de.unkrig.commons.lang.StringUtil;
 import de.unkrig.commons.lang.protocol.ConsumerWhichThrows;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.lang.protocol.Mapping;
@@ -118,11 +121,11 @@ class AntDoclet {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
-    private static final Pattern ADD_TEXT_METHOD_NAME   = Pattern.compile("addText");
-    private static final Pattern SET_XYZ_METHOD_NAME    = Pattern.compile("set(?<attributeName>[A-Z]\\w*)");
-    private static final Pattern ADD_XYZ_METHOD_NAME    = Pattern.compile("add(?:Configured)?(?<attributeName>[A-Z]\\w*)"); // SUPPRESS CHECKSTYLE LineLength
-    private static final Pattern CREATE_XYZ_METHOD_NAME = Pattern.compile("create(?<attributeName>[A-Z]\\w*)");
-    private static final Pattern ADD_METHOD_NAME        = Pattern.compile("add(?:Configured)?");
+    private static final Pattern ADD_TEXT_METHOD_NAME          = Pattern.compile("addText");
+    private static final Pattern SET_ATTRIBUTE_METHOD_NAME     = Pattern.compile("set(?<attributeName>[A-Z]\\w*)");
+    private static final Pattern ADD_METHOD_NAME               = Pattern.compile("add(?:Configured)?");
+    private static final Pattern ADD_SUBELEMENT_METHOD_NAME    = Pattern.compile("add(?:Configured)?(?<subelementName>[A-Z]\\w*)"); // SUPPRESS CHECKSTYLE LineLength
+    private static final Pattern CREATE_SUBELEMENT_METHOD_NAME = Pattern.compile("create(?<subelementName>[A-Z]\\w*)");
 
     private enum Theme { JAVA7, JAVA8 }
 
@@ -176,11 +179,12 @@ class AntDoclet {
 
                 ClassDoc cd = rootDoc.classNamed(qualifiedClassName);
                 if (cd == null) {
-                    rootDoc.printError("Cannot load \"" + qualifiedClassName + "\" for external HREF");
+
+                    // Classes that are not referenced are not loaded by JAJADOC!
                     continue;
                 }
 
-                m.put(cd, new Link(label, href));
+                m.put(cd, new Link(href, label));
             }
         }
 
@@ -401,8 +405,14 @@ class AntDoclet {
     public static final
     class AntSubelement {
 
-        public final MethodDoc        methodDoc;
+        public final MethodDoc methodDoc;
+
+        /**
+         * {@code null} for a "typed subelement" (e.g. "{@code addConfigured(Task)}"); non-{@code null} for a "named
+         * subelement" (e.g. "{@code addConfiguredFirstName(String)}").
+         */
         @Nullable public final String name;
+
         public final Type             type;
         @Nullable public final String group;
 
@@ -781,7 +791,7 @@ class AntDoclet {
                 if (to instanceof ClassDoc) {
                     ClassDoc toClass = (ClassDoc) to;
 
-                    // Link to an ANT type?
+                    // Link to an ANT type in this ANTLIB?
                     for (AntTypeGroup atg : antTypeGroups) {
                         for (AntType t : atg.types) {
                             if (toClass == t.classDoc) {
@@ -801,7 +811,7 @@ class AntDoclet {
                     {
                         Link link = AntDoclet.this.externalAntdocs.get(to);
                         if (link != null) {
-                            return new Link(link.href, "<code>&lt;" + link.defaultLabelHtml + "&gt;</code>");
+                            return new Link(link.href, StringUtil.firstLetterToUpperCase(link.defaultLabelHtml));
                         }
                     }
 
@@ -814,6 +824,30 @@ class AntDoclet {
 //                            );
 //                        }
 //                    }
+
+                    // Link to an interface that represents a "type group"?
+                    {
+                        Tag[] typeGroupNameTags   = toClass.tags("@ant.typeGroupName");
+                        Tag[] typeGroupSubdirTags = toClass.tags("@ant.typeGroupSubdir");
+
+                        if (typeGroupNameTags.length > 0) {
+                            if (typeGroupNameTags.length != 1) {
+                                rootDoc.printError(
+                                    toClass.position(),
+                                    "Exactly one @ant.typeGroupName tag must be given"
+                                );
+                                throw new Longjump();
+                            }
+                            if (typeGroupSubdirTags.length != 1) {
+                                rootDoc.printError(toClass.position(), "@ant.typeGroupSubdir tag missing");
+                                throw new Longjump();
+                            }
+                            return new Link(
+                                "../overview-summary.html#" + typeGroupSubdirTags[0].text(),
+                                "Any " + typeGroupNameTags[0].text()
+                            );
+                        }
+                    }
 
                     rootDoc.printError(from.position(), "'" + to + "' does not designate a type");
                     throw new Longjump();
@@ -1032,7 +1066,7 @@ class AntDoclet {
 
             Matcher m;
             if (
-                (m = AntDoclet.SET_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                (m = AntDoclet.SET_ATTRIBUTE_METHOD_NAME.matcher(methodName)).matches()
                 && methodParameters.length == 1
             ) {
                 String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
@@ -1061,40 +1095,53 @@ class AntDoclet {
     subelementsOf(final ClassDoc classDoc, RootDoc rootDoc) {
 
         final List<AntSubelement> subelements = new ArrayList<AntSubelement>();
-        for (MethodDoc md : Docs.methods(classDoc, true, true)) {
+        METHODS: for (MethodDoc md : Docs.methods(classDoc, true, true)) {
 
             String      methodName       = md.name();
             Parameter[] methodParameters = md.parameters();
 
             Matcher m;
-
+            String  name;
+            Type    type;
             if (
-                (m = AntDoclet.CREATE_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                (m = AntDoclet.CREATE_SUBELEMENT_METHOD_NAME.matcher(methodName)).matches()
                 && methodParameters.length == 0
             ) {
-                String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
-                Type   type = md.returnType();
-
-                subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
+                name = Notations.fromCamelCase(m.group("subelementName")).toLowerCamelCase();
+                type = md.returnType();
             } else
             if (
                 (m = AntDoclet.ADD_METHOD_NAME.matcher(methodName)).matches()
                 && methodParameters.length == 1
             ) {
-                Type type = methodParameters[0].type();
-
-                subelements.add(new AntSubelement(md, null, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
+                name = null;
+                type = methodParameters[0].type();
             } else
             if (
-                (m = AntDoclet.ADD_XYZ_METHOD_NAME.matcher(methodName)).matches()
+                (m = AntDoclet.ADD_SUBELEMENT_METHOD_NAME.matcher(methodName)).matches()
                 && !AntDoclet.ADD_TEXT_METHOD_NAME.matcher(methodName).matches()
                 && methodParameters.length == 1
             ) {
-                String name = Notations.fromCamelCase(m.group("attributeName")).toLowerCamelCase();
-                Type   type = methodParameters[0].type();
-
-                subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
+                name = Notations.fromCamelCase(m.group("subelementName")).toLowerCamelCase();
+                type = methodParameters[0].type();
+            } else
+            {
+                continue;
             }
+
+            for (Iterator<AntSubelement> it = subelements.iterator(); it.hasNext();) {
+                AntSubelement as = it.next();
+
+                if (ObjectUtil.equals(as.name, name) && as.type == type) {
+                    if (as.methodDoc.tags().length == 0) {
+                        it.remove();
+                        break;
+                    }
+                }
+
+                if (md.tags().length == 0) continue METHODS;
+            }
+            subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
         }
 
         String so = Tags.optionalTag(classDoc, "@ant.subelementOrder", rootDoc);
