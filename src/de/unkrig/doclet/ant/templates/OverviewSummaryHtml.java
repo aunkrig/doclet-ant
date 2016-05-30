@@ -88,6 +88,7 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
                     if (typeGroup.types.isEmpty()) continue;
 
                     OverviewSummaryHtml.this.l(
+"    <a name=\"" + typeGroup.subdir + "\" />",
 "    <h2>" + typeGroup.heading + " summary</h2>",
 "    <dl>"
                     );

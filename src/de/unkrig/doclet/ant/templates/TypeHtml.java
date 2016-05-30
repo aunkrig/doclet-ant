@@ -200,14 +200,14 @@ class TypeHtml extends AbstractDetailHtml {
                 } else {
                     anchor = stqn;
                     try {
-                        summaryNameHtml = "Any <code>" + html.makeLink(
+                        summaryNameHtml = html.makeLink(
                             subelementTypeClassDoc, // from
                             subelementTypeClassDoc, // to
-                            false,                  // plain
+                            true,                   // plain
                             null,                   // label
                             null,                   // target
                             rootDoc                 // rootDoc
-                        ) + "</code>";
+                        );
                     } catch (Longjump l) {
                         summaryNameHtml = "Any <code>" + stqn + "</code>";
                     }
