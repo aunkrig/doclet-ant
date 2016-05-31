@@ -26,7 +26,9 @@
 
 package de.unkrig.doclet.ant.templates;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import com.sun.javadoc.RootDoc;
 
@@ -37,9 +39,10 @@ import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractRightFrameHtml;
+import de.unkrig.notemplate.javadocish.templates.AbstractSummaryHtml;
 
 public
-class OverviewSummaryHtml extends AbstractRightFrameHtml {
+class OverviewSummaryHtml extends AbstractSummaryHtml {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
@@ -51,7 +54,39 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
         final Html                     html
     ) {
 
-        super.rRightFrameHtml(
+        List<Section> sections = new ArrayList<>();
+        for (AntTypeGroup typeGroup : antTypeGroups) {
+
+            if (typeGroup.types.isEmpty()) continue;
+
+            Section section = new Section();
+
+            section.anchor             = typeGroup.subdir;
+            section.title              = typeGroup.heading + " summary";
+            section.firstColumnHeading = typeGroup.name;
+            section.items              = new ArrayList<>();
+
+            for (final AntType antType : typeGroup.types) {
+
+                try {
+                    SectionItem item = new SectionItem();
+
+                    item.link    = typeGroup.subdir + "/" + antType.name + ".html";
+                    item.name    = "<code>&lt;" + antType.name + "&gt;</code>";
+                    item.summary = html.fromTags(
+                        antType.classDoc.firstSentenceTags(), // tags
+                        antType.classDoc,                     // ref
+                        rootDoc                               // rootDoc
+                    );
+
+                    section.items.add(item);
+                } catch (Longjump l) {}
+            }
+
+            sections.add(section);
+        }
+
+        super.rSummary(
             "Overview",                        // windowTitle
             options,                           // options
             new String[] { "stylesheet.css" }, // stylesheetLinks
@@ -71,54 +106,13 @@ class OverviewSummaryHtml extends AbstractRightFrameHtml {
             new String[] {                     // nav4
                 "All Classes", "alldefinitions-noframe.html",
             },
-            null,                              // nav5
-            null,                              // nav6
-            () -> {                            // renderBody
-
-                OverviewSummaryHtml.this.l(
-"    <div class=\"contentContainer\">"
-                );
-
+            () -> {                            // prolog
                 OverviewSummaryHtml.this.l(
 "      <h1>ANT Library Overview</h1>"
                 );
-
-                for (AntTypeGroup typeGroup : antTypeGroups) {
-
-                    if (typeGroup.types.isEmpty()) continue;
-
-                    OverviewSummaryHtml.this.l(
-"    <a name=\"" + typeGroup.subdir + "\" />",
-"    <h2>" + typeGroup.heading + " summary</h2>",
-"    <dl>"
-                    );
-                    for (final AntType antType : typeGroup.types) {
-                        try {
-                            OverviewSummaryHtml.this.l(
-"      <dt><code>" + html.makeLink(
-    rootDoc,
-    antType.classDoc,
-    false, // plain
-    null,  // label
-    null,  // target
-    rootDoc
-) + "</code></dt>",
-"      <dd>" + html.fromTags(
-    antType.classDoc.firstSentenceTags(), // tags
-    antType.classDoc,                     // ref
-    rootDoc                               // rootDoc
-) + "</dd>"
-                            );
-                        } catch (Longjump l) {}
-                    }
-                    OverviewSummaryHtml.this.l(
-"    </dl>"
-                    );
-                }
-                OverviewSummaryHtml.this.l(
-"    </div>"
-                );
-            }
+            },
+            () -> {},                          // epilog
+            sections                           // sections
         );
     }
 }
