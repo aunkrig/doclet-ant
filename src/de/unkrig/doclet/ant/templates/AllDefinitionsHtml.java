@@ -38,7 +38,7 @@ import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractBottomLeftFrameHtml;
 
 /**
- * Renders the contents of the "All Definitions" frame.
+ * Renders the contents of the "All Definitions" left frame.
  */
 public
 class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
@@ -50,6 +50,7 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
     render(final Collection<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
 
         super.rBottomLeftFrameHtml(
+            "All types",                       // windowTitle
             "All types",                       // heading
             "overview-summary.html",           // headingLink
             options,                           // options
