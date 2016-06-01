@@ -286,7 +286,8 @@ class TypeHtml extends AbstractDetailHtml {
                 "All Definitions", home + "alldefinitions-noframe.html",
             },
             HtmlTemplate.esc(typeGroup.name),                              // subtitle
-            typeGroup.typeHeadingMf.format(new String[] { antType.name }), // title
+            typeGroup.typeHeadingMf.format(new String[] { antType.name }), // heading
+            typeGroup.typeHeadingMf.format(new String[] { antType.name }), // headingTitle
             new Runnable() {                                               // prolog
 
                 @Override public void
@@ -296,7 +297,7 @@ class TypeHtml extends AbstractDetailHtml {
                     } catch (Longjump l) {}
                 }
             },
-            sections
+            sections                                                       // sections
         );
     }
 
