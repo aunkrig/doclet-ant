@@ -51,10 +51,10 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
 
         super.rBottomLeftFrameHtml(
             "All types",                       // windowTitle
-            "All types",                       // heading
-            "overview-summary.html",           // headingLink
             options,                           // options
             new String[] { "stylesheet.css" }, // stylesheetLinks
+            "All types",                       // heading
+            "overview-summary.html",           // headingLink
             null,                              // renderIndexHeader
             () -> {                            // renderIndexContainer
                 for (AntTypeGroup typeGroup : antTypeGroups) {
