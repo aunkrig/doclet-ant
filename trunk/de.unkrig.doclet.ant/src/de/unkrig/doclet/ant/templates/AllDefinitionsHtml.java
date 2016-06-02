@@ -55,7 +55,8 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
             "overview-summary.html",           // headingLink
             options,                           // options
             new String[] { "stylesheet.css" }, // stylesheetLinks
-            () -> {                            // renderBody
+            null,                              // renderIndexHeader
+            () -> {                            // renderIndexContainer
                 for (AntTypeGroup typeGroup : antTypeGroups) {
 
                     if (typeGroup.types.isEmpty()) continue;

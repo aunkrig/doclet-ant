@@ -64,7 +64,6 @@ class OverviewSummaryHtml extends AbstractSummaryHtml {
             section.anchor             = typeGroup.subdir;
             section.title              = typeGroup.heading + " summary";
             section.firstColumnHeading = typeGroup.name;
-            section.items              = new ArrayList<>();
 
             for (final AntType antType : typeGroup.types) {
 
