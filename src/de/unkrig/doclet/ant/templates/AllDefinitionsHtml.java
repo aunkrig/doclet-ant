@@ -32,7 +32,6 @@ import com.sun.javadoc.RootDoc;
 
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.protocol.Longjump;
-import de.unkrig.doclet.ant.AntDoclet.AntType;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractBottomLeftFrameHtml;
@@ -57,16 +56,16 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
             "overview-summary.html",           // headingLink
             null,                              // renderIndexHeader
             () -> {                            // renderIndexContainer
-                for (AntTypeGroup typeGroup : antTypeGroups) {
+                antTypeGroups.stream().forEach(typeGroup -> {
 
-                    if (typeGroup.types.isEmpty()) continue;
+                    if (typeGroup.types.isEmpty()) return;
 
                     AllDefinitionsHtml.this.l(
 "    <h2 title=\"" + typeGroup.heading + "\">" + typeGroup.heading + "</h2>",
 "    <ul title=\"" + typeGroup.heading + ">"
                     );
 
-                    for (final AntType antType : typeGroup.types) {
+                    typeGroup.types.stream().forEach(antType -> {
                         try {
                             AllDefinitionsHtml.this.l(
 "      <li>" + html.makeLink(
@@ -79,12 +78,12 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
 ) + "</li>"
                             );
                         } catch (Longjump l) {}
-                    }
+                    });
 
                     AllDefinitionsHtml.this.l(
 "    </ul>"
                     );
-                }
+                });
             }
         );
     }
