@@ -86,18 +86,30 @@ class TypeHtml extends AbstractDetailHtml {
         MethodDoc characterData = antType.characterData;
         if (characterData != null) {
 
-            SectionAddendum sa = new SectionAddendum();
-            sa.title = "Text between start and end tag";
+            String content;
             try {
-                sa.content = html.generateFor(characterData, rootDoc);
+                content = html.generateFor(characterData, rootDoc);
             } catch (Longjump l) {
-                sa.content = "???";
+                content = "???";
             }
 
-            Section textSection = new Section();
-            textSection.anchor              = "text";
-            textSection.navigationLinkLabel = "Text";
-            textSection.summaryTitle1       = "Text";
+            SectionAddendum sa = new SectionAddendum(
+                "Text between start and end tag", // title
+                content,                          // content
+                null                              // anchor
+            );
+
+            Section textSection = new Section(
+                "text", // anchor
+                "Text", // navigationLinkLabel
+                "Text", // summaryTitle1
+                null,   // summaryTitle2
+                null,   // summaryTableHeadings
+                null,   // detailTitle
+                null,   // detailDescription
+                null    // summaryItemComparator
+            );
+
             textSection.addenda.add(sa);
 
             sections.add(textSection);
@@ -159,24 +171,28 @@ class TypeHtml extends AbstractDetailHtml {
                         detailContent = tmp;
                     }
 
-                    SectionItem sectionItem = new SectionItem();
-                    sectionItem.anchor             = a.name;
-                    sectionItem.summaryTableCells  = new String[] { summaryTitle, summaryDescription };
-                    sectionItem.detailTitle        = detailTitle;
-                    sectionItem.printDetailContent = () -> { TypeHtml.this.p(detailContent); };
+                    SectionItem sectionItem = new SectionItem(
+                        a.name,                                            // anchor
+                        new String[] { summaryTitle, summaryDescription }, // summaryTableCells
+                        detailTitle,                                       // detailTitle
+                        () -> { TypeHtml.this.p(detailContent); }          // printDetailContent
+                    );
 
                     attributeSectionItems.add(sectionItem);
                 }
             }
 
-            Section attributesSection = new Section();
-            attributesSection.anchor               = "attributes";
-            attributesSection.detailTitle          = "Attribute Detail";
-            attributesSection.detailDescription    = "Default values are <u>underlined</u>.";
-            attributesSection.navigationLinkLabel  = "Attributes";
-            attributesSection.summaryTableHeadings = new String[] { "Name", "Description" };
-            attributesSection.summaryTitle1        = "Attribute Summary";
-            attributesSection.summaryTitle2        = "Attributes";
+            Section attributesSection = new Section(
+                "attributes",                            // anchor
+                "Attributes",                            // navigationLinkLabel
+                "Attribute Summary",                     // summaryTitle1
+                "Attributes",                            // summaryTitle2
+                new String[] { "Name", "Description" },  // summaryTableHeadings
+                "Attribute Detail",                      // detailTitle
+                "Default values are <u>underlined</u>.", // detailDescription
+                null                                     // summaryItemComparator
+            );
+
             attributesSection.items.addAll(attributeSectionItems);
 
             sections.add(attributesSection);
@@ -226,30 +242,33 @@ class TypeHtml extends AbstractDetailHtml {
 
                 if (subelement.methodDoc.tags("@deprecated").length > 0) firstSentence = "(deprecated)";
 
-                SectionItem subelementSectionItem = new SectionItem();
-                subelementSectionItem.anchor             = anchor;
-                subelementSectionItem.summaryTableCells  = new String[] { summaryNameHtml, firstSentence };
-                subelementSectionItem.detailTitle        = summaryNameHtml;
-                subelementSectionItem.printDetailContent = () -> {
-                    TypeHtml.this.printSubelement2(
-                        atwc.current().classDoc, // from
-                        subelement,              // subelement
-                        html,                    // html
-                        rootDoc,                 // rootDoc
-                        new HashSet<ClassDoc>()  // seenTypes
-                    );
-                };
-
-                subelementSectionItems.add(subelementSectionItem);
+                subelementSectionItems.add(new SectionItem(
+                    anchor,                                          // anchor
+                    new String[] { summaryNameHtml, firstSentence }, // summaryTableCells
+                    summaryNameHtml,                                 // detailTitle
+                    () -> {                                          // printDetailContent
+                        TypeHtml.this.printSubelement2(
+                            atwc.current().classDoc, // from
+                            subelement,              // subelement
+                            html,                    // html
+                            rootDoc,                 // rootDoc
+                            new HashSet<ClassDoc>()  // seenTypes
+                        );
+                    }
+                ));
             }
 
-            Section subelementsSection = new Section();
-            subelementsSection.anchor               = "subelements";
-            subelementsSection.detailTitle          = "Subelement Detail";
-            subelementsSection.navigationLinkLabel  = "Subelements";
-            subelementsSection.summaryTableHeadings = new String[] { "Name", "Description" };
-            subelementsSection.summaryTitle1        = "Subelement Summary";
-            subelementsSection.summaryTitle2        = "Subelements";
+            Section subelementsSection = new Section(
+                "subelements", // anchor
+                "Subelements", // navigationLinkLabel
+                "Subelement Summary", // summaryTitle1
+                "Subelements", // summaryTitle2
+                new String[] { "Name", "Description" }, // summaryTableHeadings
+                "Subelement Detail", // detailTitle
+                null, // detailDescription
+                null // summaryItemComparator
+            );
+
             subelementsSection.items.addAll(subelementSectionItems);
 
             sections.add(subelementsSection);

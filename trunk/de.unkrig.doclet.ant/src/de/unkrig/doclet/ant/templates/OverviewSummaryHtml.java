@@ -59,26 +59,25 @@ class OverviewSummaryHtml extends AbstractSummaryHtml {
 
             if (typeGroup.types.isEmpty()) continue;
 
-            Section section = new Section();
-
-            section.anchor             = typeGroup.subdir;
-            section.title              = typeGroup.heading + " summary";
-            section.firstColumnHeading = typeGroup.name;
+            Section section = new Section(
+                typeGroup.subdir,               // anchor
+                typeGroup.heading + " summary", // title
+                null,                           // summary
+                typeGroup.name                  // firstColumnHeading
+            );
 
             for (final AntType antType : typeGroup.types) {
 
                 try {
-                    SectionItem item = new SectionItem();
-
-                    item.link    = typeGroup.subdir + "/" + antType.name + ".html";
-                    item.name    = "<code>&lt;" + antType.name + "&gt;</code>";
-                    item.summary = html.fromTags(
-                        antType.classDoc.firstSentenceTags(), // tags
-                        antType.classDoc,                     // ref
-                        rootDoc                               // rootDoc
-                    );
-
-                    section.items.add(item);
+                    section.items.add(new SectionItem(
+                        typeGroup.subdir + "/" + antType.name + ".html", // link
+                        "<code>&lt;" + antType.name + "&gt;</code>",     // name
+                        html.fromTags(                                   // summary
+                            antType.classDoc.firstSentenceTags(), // tags
+                            antType.classDoc,                     // ref
+                            rootDoc                               // rootDoc
+                        )
+                    ));
                 } catch (Longjump l) {}
             }
 
