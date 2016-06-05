@@ -259,14 +259,14 @@ class TypeHtml extends AbstractDetailHtml {
             }
 
             Section subelementsSection = new Section(
-                "subelements", // anchor
-                "Subelements", // navigationLinkLabel
-                "Subelement Summary", // summaryTitle1
-                "Subelements", // summaryTitle2
+                "subelements",                          // anchor
+                "Subelements",                          // navigationLinkLabel
+                "Subelement Summary",                   // summaryTitle1
+                "Subelements",                          // summaryTitle2
                 new String[] { "Name", "Description" }, // summaryTableHeadings
-                "Subelement Detail", // detailTitle
-                null, // detailDescription
-                null // summaryItemComparator
+                "Subelement Detail",                    // detailTitle
+                null,                                   // detailDescription
+                null                                    // summaryItemComparator
             );
 
             subelementsSection.items.addAll(subelementSectionItems);
