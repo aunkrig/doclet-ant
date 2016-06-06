@@ -1133,7 +1133,7 @@ class AntDoclet {
                 AntSubelement as = it.next();
 
                 if (ObjectUtil.equals(as.name, name) && as.type == type) {
-                    if (as.methodDoc.tags().length == 0) {
+                    if (as.methodDoc.inlineTags().length == 0) {
                         it.remove();
                         break;
                     }
