@@ -27,14 +27,13 @@
 package de.unkrig.doclet.ant.templates;
 
 import java.util.Collection;
-import java.util.function.Consumer;
 
 import com.sun.javadoc.RootDoc;
 
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.protocol.Longjump;
-import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
+import de.unkrig.notemplate.commons.lang.ConsumerUtil8;
 import de.unkrig.notemplate.javadocish.Options;
 import de.unkrig.notemplate.javadocish.templates.AbstractBottomLeftFrameHtml;
 
@@ -62,19 +61,12 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
 
                     AllDefinitionsHtml.this.l(
 "    <h2 title=\"" + typeGroup.heading + "\">" + typeGroup.heading + "</h2>",
-"    <ul title=\"" + typeGroup.heading + ">"
+"    <ul title=\"" + typeGroup.heading + "\">"
                     );
 
-                    typeGroup.types.stream().forEach(ignoreLongjump(antType -> {
+                    typeGroup.types.stream().forEach(ConsumerUtil8.ignoreExceptions(Longjump.class, antType -> {
                         AllDefinitionsHtml.this.l(
-"      <li>" + html.makeLink(
-    rootDoc,           // from
-    antType.classDoc,  // to
-    false,             // plain
-    null,              // label
-    "classFrame",      // target
-    rootDoc            // rootDoc
-) + "</li>"
+"      <li>" + html.makeLink(rootDoc, antType.classDoc, false, null, "classFrame", rootDoc) + "</li>"
                         );
                     }));
 
@@ -84,27 +76,5 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
                 });
             }
         );
-    }
-
-    public
-    interface ConsumerWhichThrowsLongjump<T> {
-        void consume(T subject) throws Longjump;
-    }
-
-    public static <T> Consumer<T>
-    ignoreLongjump(final ConsumerWhichThrowsLongjump<T> delegate) {
-
-        return new Consumer<T>() {
-
-            @Override public void
-            accept(@Nullable T subject) {
-                assert subject != null;
-                try {
-                    delegate.consume(subject);
-                } catch (Longjump e) {
-                    ;
-                }
-            }
-        };
     }
 }
