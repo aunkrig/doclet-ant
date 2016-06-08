@@ -54,6 +54,16 @@ class OverviewSummaryHtml extends AbstractSummaryHtml {
         final Html                     html
     ) {
 
+        final String overviewFirstSentenceHtml = AssertionUtil.notNull(Longjump.catchLongjump(
+            () -> html.fromTags(rootDoc.firstSentenceTags(), rootDoc, rootDoc),
+            ""
+        ));
+
+        final String overviewHtml = AssertionUtil.notNull(Longjump.catchLongjump(
+            () -> html.fromTags(rootDoc.inlineTags(), rootDoc, rootDoc),
+            ""
+        ));
+
         List<Section> sections = new ArrayList<>();
         for (AntTypeGroup typeGroup : antTypeGroups) {
 
@@ -85,32 +95,56 @@ class OverviewSummaryHtml extends AbstractSummaryHtml {
         }
 
         super.rSummary(
-            "Overview",                        // windowTitle
-            options,                           // options
-            new String[] { "stylesheet.css" }, // stylesheetLinks
-            new String[] {                     // nav1
+            "Overview",                             // windowTitle
+            options,                                // options
+            new String[] { "stylesheet.css" },      // stylesheetLinks
+            new String[] {                          // nav1
                 "Overview",            AbstractRightFrameHtml.HIGHLIT,
                 "Task",                AbstractRightFrameHtml.DISABLED,
                 "Resource collection", AbstractRightFrameHtml.DISABLED,
                 "Chainable reader",    AbstractRightFrameHtml.DISABLED,
                 "Condition",           AbstractRightFrameHtml.DISABLED,
-                "Index",               "index-all.html",
+                "Index",               options.splitIndex ? "index-files/index-1.html" : "index-all.html",
             },
-            new String[] { "Prev", "Next" },   // nav2
-            new String[] {                     // nav3
+            new String[] { "Prev", "Next" },        // nav2
+            new String[] {                          // nav3
                 "Frames",    "index.html",
                 "No Frames", "overview-summary.html",
             },
-            new String[] {                     // nav4
+            new String[] {                          // nav4
                 "All Classes", "alldefinitions-noframe.html",
             },
-            () -> {                            // prolog
-                OverviewSummaryHtml.this.l(
+            new Runnable[] {                        // renderHeaders
+                () -> {
+                    OverviewSummaryHtml.this.l(
 "      <h1>ANT Library Overview</h1>"
-                );
+                    );
+                },
+                overviewFirstSentenceHtml.isEmpty() ? null : () -> {
+                    this.l(
+"      <div class=\"docSummary\">",
+"        <div class=\"subTitle\">",
+"          <div class=\"block\">" + overviewFirstSentenceHtml + "</div>",
+"        </div>"
+                    );
+                    if (!overviewHtml.isEmpty()) {
+                        this.l(
+"        <p>See: <a href=\"#description\">Description</a></p>"
+                        );
+                    }
+                    this.l(
+"      </div>"
+                    );
+                }
             },
-            () -> {},                          // epilog
-            sections                           // sections
+            overviewHtml.isEmpty() ? null : () -> { // epilog
+                this.l(
+"      <a name=\"description\" />",
+"      " + overviewHtml
+                );
+
+            },
+            sections                                // sections
         );
     }
 }
