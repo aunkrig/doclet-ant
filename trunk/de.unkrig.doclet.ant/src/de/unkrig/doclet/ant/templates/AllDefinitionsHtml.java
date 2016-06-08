@@ -64,10 +64,12 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
 "    <ul title=\"" + typeGroup.heading + "\">"
                     );
 
-                    typeGroup.types.stream().forEach(ConsumerUtil8.ignoreExceptions(Longjump.class, antType -> {
-                        AllDefinitionsHtml.this.l(
+                    typeGroup.types.stream().forEach(ConsumerUtil8.asJavaUtil(antType -> {
+                        Longjump.catchLongjump(() -> {
+                            AllDefinitionsHtml.this.l(
 "      <li>" + html.makeLink(rootDoc, antType.classDoc, false, null, "classFrame", rootDoc) + "</li>"
-                        );
+                            );
+                        });
                     }));
 
                     AllDefinitionsHtml.this.l(
