@@ -70,6 +70,7 @@ import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.doclet.html.Html.Link;
 import de.unkrig.commons.doclet.html.Html.LinkMaker;
 import de.unkrig.commons.io.IoUtil;
+import de.unkrig.commons.io.IoUtil.CollisionStrategy;
 import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.ExceptionUtil;
 import de.unkrig.commons.lang.ObjectUtil;
@@ -134,6 +135,7 @@ class AntDoclet {
     private final File                             antlibFile;
     private final Map<String /*packageName*/, URL> externalJavadocs;
     private final Theme                            theme;
+    private final String[]                         sourcePath;
 
     /**
      * Documentation URLs for well-known ANT tasks and types.
@@ -142,11 +144,12 @@ class AntDoclet {
 
     public
     AntDoclet(
-        RootDoc          rootDoc,
-        Options          options,
-        File             antlibFile,
-        Map<String, URL> externalJavadocs,
-        Theme            theme
+        RootDoc            rootDoc,
+        Options            options,
+        File               antlibFile,
+        Map<String, URL>   externalJavadocs,
+        Theme              theme,
+        @Nullable String[] sourcePath
     ) throws IOException {
 
         this.rootDoc          = rootDoc;
@@ -154,6 +157,7 @@ class AntDoclet {
         this.antlibFile       = antlibFile;
         this.externalJavadocs = externalJavadocs;
         this.theme            = theme;
+        this.sourcePath       = sourcePath;
 
         Map<ClassDoc, Link> m = new HashMap<ClassDoc, Link>();
 
@@ -463,6 +467,7 @@ class AntDoclet {
         File                                              antlibFile       = new File("antlib.xml");
         final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<String, URL>();
         Theme                                             theme            = Theme.JAVA8;
+        String[]                                          sourcePath       = null;
 
         Options options   = new Options();
         options.generator = "the ANT doclet http://doclet.unkrig.de";
@@ -546,6 +551,9 @@ class AntDoclet {
             if ("-theme".equals(option[0])) {
                 theme = Theme.valueOf(option[1]);
             } else
+            if ("-sourcepath".equals(option[0]) && option.length == 2) {
+                sourcePath = option[1].split(Pattern.quote(File.pathSeparator));
+            } else
             {
 
                 // It is quite counterintuitive, but 'options()' returns ALL options, not only those which
@@ -554,7 +562,7 @@ class AntDoclet {
             }
         }
 
-        new AntDoclet(rootDoc, options, antlibFile, externalJavadocs, theme).start2();
+        new AntDoclet(rootDoc, options, antlibFile, externalJavadocs, theme, sourcePath).start2();
 
         return true;
     }
@@ -581,7 +589,7 @@ class AntDoclet {
                     AntDoclet.class.getClassLoader(),
                     resourceNamePrefix + resourceNameSuffix,
                     file,
-                    true                                                  // createMissingParentDirectories
+                    true // createMissingParentDirectories
                 );
             }
             break;
@@ -591,7 +599,7 @@ class AntDoclet {
                 AntDoclet.class.getClassLoader(),
                 "de/unkrig/doclet/ant/theme/java8/stylesheet.css",
                 new File(this.options.destination, "stylesheet.css"),
-                true                                                  // createMissingParentDirectories
+                true // createMissingParentDirectories
             );
             break;
         }
@@ -600,7 +608,7 @@ class AntDoclet {
             AntDoclet.class.getClassLoader(),
             "de/unkrig/doclet/ant/templates/stylesheet2.css",
             new File(this.options.destination, "stylesheet2.css"),
-            true                                                  // createMissingParentDirectories
+            true // createMissingParentDirectories
         );
 
         // Render "index.html" (the frameset).
@@ -660,23 +668,27 @@ class AntDoclet {
         // Now parse the contents of the given ANTLIB file; see
         // https://ant.apache.org/manual/Types/antlib.html
         for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
+            AntType antType;
             try {
-                antTypeGroups.get(antTypeGroupTasks.types.add(AntDoclet.parseType(taskdefElement, this.rootDoc)));
-            } catch (Longjump l) {}
+                antType = AntDoclet.parseType(taskdefElement, this.rootDoc);
+            } catch (Longjump l) {
+                continue;
+            }
+            antTypeGroupTasks.types.add(antType);
         }
         for (Element typedefElement : IterableUtil.concat(
             AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
             AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
         )) {
-            AntType type;
+            AntType antType;
             try {
-                type = AntDoclet.parseType(typedefElement, this.rootDoc);
+                antType = AntDoclet.parseType(typedefElement, this.rootDoc);
             } catch (Longjump l) {
                 continue;
             }
 
             boolean hadOneTypeGroup = false;
-            for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(type.classDoc)) {
+            for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
 
                 AntTypeGroup atg = antTypeGroups.get(cd);
                 if (atg == null) {
@@ -697,11 +709,11 @@ class AntDoclet {
                     )));
                 }
 
-                atg.types.add(type);
+                atg.types.add(antType);
                 hadOneTypeGroup = true;
             }
 
-            if (!hadOneTypeGroup) antTypeGroupOther.types.add(type);
+            if (!hadOneTypeGroup) antTypeGroupOther.types.add(antType);
         }
         if (document.getElementsByTagName("macrodef").getLength() > 0) {
             this.rootDoc.printWarning("<macrodef>s are not yet supported");
@@ -718,6 +730,24 @@ class AntDoclet {
 
             for (final ElementWithContext<AntType> atwc : IterableUtil.iterableWithContext(typeGroup.types)) {
                 AntType antType = atwc.current();
+
+                for (String sourceFolder : this.sourcePath == null ? new String[] { "." } : this.sourcePath) {
+
+                    File docFilesFolder = new File(
+                        sourceFolder
+                        + '/'
+                        + antType.classDoc.containingPackage().name().replace('.', '/')
+                        + "/doc-files"
+                    );
+
+                    if (!docFilesFolder.exists()) continue;
+
+                    IoUtil.copyTree(
+                        docFilesFolder,
+                        new File(this.options.destination, typeGroup.subdir + "/doc-files"),
+                        CollisionStrategy.IO_EXCEPTION_IF_DIFFERENT
+                    );
+                }
 
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
