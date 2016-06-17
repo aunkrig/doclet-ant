@@ -742,9 +742,12 @@ class AntDoclet {
 
                     if (!docFilesFolder.exists()) continue;
 
+                    File destinationFolder = new File(this.options.destination, typeGroup.subdir + "/doc-files");
+                    IoUtil.createMissingParentDirectoriesFor(destinationFolder);
+
                     IoUtil.copyTree(
                         docFilesFolder,
-                        new File(this.options.destination, typeGroup.subdir + "/doc-files"),
+                        destinationFolder,
                         CollisionStrategy.IO_EXCEPTION_IF_DIFFERENT
                     );
                 }
