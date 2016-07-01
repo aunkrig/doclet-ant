@@ -674,7 +674,7 @@ class TypeHtml extends AbstractDetailHtml {
         }
 
         String suffix = mandatory ? " (mandatory)" : "";
-        return "<a name=\"" + attribute.name + "\" /><code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix;
+        return "<a name=\"" + attribute.methodDoc.containingClass().qualifiedName() + "/" + attribute.methodDoc.name() + "\" /><code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix;
     }
 
     private void

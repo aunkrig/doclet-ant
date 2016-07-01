@@ -926,22 +926,42 @@ class AntDoclet {
                             }
 
                             // Link to a subelement (of the same or a different ANT type)?
-                            for (AntSubelement s : t.subelements) {
-                                if (s.methodDoc == toMethod) {
+                            for (AntSubelement se : t.subelements) {
+                                if (se.methodDoc == toMethod) {
                                     String fragment = (
                                         '#'
-                                        + (s.name != null ? s.name : s.type.asClassDoc().qualifiedName())
+                                        + (se.name != null ? se.name : se.type.asClassDoc().qualifiedName())
                                         + "_detail"
                                     );
                                     return new Link(
                                         (
-                                            antType == null ? tg.subdir + '/' + t.name + fragment :
+                                            antType == null ? tg.subdir + '/' + t.name + ".html" + fragment :
                                             toMethod.containingClass() == antType.classDoc ? fragment :
-                                            typeGroup == tg ? antType.name + fragment :
-                                            "../" + tg.subdir + '/' + antType.name + fragment
+                                            typeGroup == tg ? antType.name + ".html" + fragment :
+                                            "../" + tg.subdir + '/' + antType.name + ".html" + fragment
                                         ),
-                                        "&lt;" + s.name + "&gt;"
+                                        "&lt;" + se.name + "&gt;"
                                     );
+                                }
+                            }
+
+                            // Link to an attribute of a subelement (of the same or a different ANT type)?
+                            for (AntSubelement se : t.subelements) {
+                                Parameter[] params = se.methodDoc.parameters();
+                                if (params.length != 1) continue;
+                                for (MethodDoc md : params[0].type().asClassDoc().methods()) {
+                                    if (md == toMethod) {
+                                        String fragment = '#' + md.containingClass().qualifiedName() + "/" + md.name();
+                                        return new Link(
+                                            (
+                                                antType == null ? tg.subdir + '/' + t.name + ".html" + fragment :
+                                                toClass == antType.classDoc ? fragment :
+                                                typeGroup == tg ? t.name + ".html" + fragment :
+                                                "../" + tg.subdir + '/' + t.name + ".html" + fragment
+                                            ),
+                                            md.name() + "=\"...\""
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -952,7 +972,7 @@ class AntDoclet {
                         + from
                         + "' to '"
                         + to
-                        + "': "
+                        + "': '"
                         + toMethod
                         + "' is not an attribute setter nor a subelement adder/creator"
                     ));
@@ -1165,14 +1185,22 @@ class AntDoclet {
             for (Iterator<AntSubelement> it = subelements.iterator(); it.hasNext();) {
                 AntSubelement as = it.next();
 
+                // Was a method for the same subelement documented before?
                 if (ObjectUtil.equals(as.name, name) && as.type == type) {
+
+                    if (md.tags().length == 0) {
+
+                        // Yes, but the "new" method has no documentation, so we leave the "old" method.
+                        continue METHODS;
+                    }
+
                     if (as.methodDoc.inlineTags().length == 0) {
+
+                        // Yes, and the "old" method has no documentation, so we replace it with the "new" method.
                         it.remove();
                         break;
                     }
                 }
-
-                if (md.tags().length == 0) continue METHODS;
             }
             subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
         }
