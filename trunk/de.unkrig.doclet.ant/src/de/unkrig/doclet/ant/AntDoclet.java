@@ -949,7 +949,7 @@ class AntDoclet {
                             for (AntSubelement se : t.subelements) {
                                 Parameter[] params = se.methodDoc.parameters();
                                 if (params.length != 1) continue;
-                                for (MethodDoc md : params[0].type().asClassDoc().methods()) {
+                                for (MethodDoc md : Docs.methods(params[0].type().asClassDoc(), false, true)) {
                                     if (md == toMethod) {
                                         String fragment = '#' + md.containingClass().qualifiedName() + "/" + md.name();
                                         return new Link(
