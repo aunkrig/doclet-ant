@@ -135,7 +135,7 @@ class AntDoclet {
     private final File                             antlibFile;
     private final Map<String /*packageName*/, URL> externalJavadocs;
     private final Theme                            theme;
-    private final String[]                         sourcePath;
+    @Nullable private final String[]               sourcePath;
 
     /**
      * Documentation URLs for well-known ANT tasks and types.
@@ -159,7 +159,7 @@ class AntDoclet {
         this.theme            = theme;
         this.sourcePath       = sourcePath;
 
-        Map<ClassDoc, Link> m = new HashMap<ClassDoc, Link>();
+        Map<ClassDoc, Link> m = new HashMap<>();
 
         // Resource "de/unkrig/doclet/ant/AntDoclet/external-antdocs.properties" provides a number of
         // qualified-class-name to label/href mappings.
@@ -465,7 +465,7 @@ class AntDoclet {
     start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException {
 
         File                                              antlibFile       = new File("antlib.xml");
-        final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<String, URL>();
+        final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<>();
         Theme                                             theme            = Theme.JAVA8;
         String[]                                          sourcePath       = null;
 
@@ -1108,7 +1108,7 @@ class AntDoclet {
     public static List<AntAttribute>
     attributesOf(final ClassDoc classDoc, RootDoc rootDoc) {
 
-        final List<AntAttribute>  attributes  = new ArrayList<AntAttribute>();
+        final List<AntAttribute>  attributes  = new ArrayList<>();
         METHODS:
         for (MethodDoc md : Docs.methods(classDoc, true, true)) {
 
@@ -1147,7 +1147,7 @@ class AntDoclet {
     public static List<AntSubelement>
     subelementsOf(final ClassDoc classDoc, RootDoc rootDoc) {
 
-        final List<AntSubelement> subelements = new ArrayList<AntSubelement>();
+        final List<AntSubelement> subelements = new ArrayList<>();
         METHODS: for (MethodDoc md : Docs.methods(classDoc, true, true)) {
 
             String      methodName       = md.name();
@@ -1207,8 +1207,8 @@ class AntDoclet {
 
         String so = Tags.optionalTag(classDoc, "@ant.subelementOrder", rootDoc);
         if ("inheritedFirst".equals(so)) {
-            List<AntSubelement> tmp1 = new ArrayList<AntDoclet.AntSubelement>();
-            List<AntSubelement> tmp2 = new ArrayList<AntDoclet.AntSubelement>();
+            List<AntSubelement> tmp1 = new ArrayList<>();
+            List<AntSubelement> tmp2 = new ArrayList<>();
             for (AntSubelement se : subelements) {
                 if (se.methodDoc.containingClass() == classDoc) {
                     tmp1.add(se);
