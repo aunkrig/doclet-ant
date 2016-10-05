@@ -693,12 +693,14 @@ class AntDoclet {
                 AntTypeGroup atg = antTypeGroups.get(cd);
                 if (atg == null) {
 
-                    String typeGroupSubdir  = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
-                    if (typeGroupSubdir == null) continue;
-                    String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc);
-                    String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc);
-                    String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc);
-                    String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc);
+                    Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
+                    if (typeGroupSubdirTag == null) continue;
+
+                    String typeGroupSubdir  = typeGroupSubdirTag.text();
+                    String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc).text();
+                    String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc).text();
+                    String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc).text();
+                    String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc).text();
 
                     antTypeGroups.put(cd, (atg = new AntTypeGroup(
                         typeGroupSubdir,  // subdir
@@ -848,15 +850,17 @@ class AntDoclet {
                         }
                     }
 
-//                    // Link to a subelement of this ANT type?
-//                    for (AntSubelement se : antType.subelements) {
-//                        if (toClass == se.type) {
-//                            return new Link(
-//                                "#" + toClass.qualifiedName() + "_detail",
-//                                "<code>&lt;" + se.name + "&gt;</code>"
-//                            );
-//                        }
-//                    }
+                    // Link to a subelement of this ANT type?
+                    if (antType != null) {
+                        for (AntSubelement se : antType.subelements) {
+                            if (toClass == se.type) {
+                                return new Link(
+                                    "#" + toClass.qualifiedName() + "_detail",
+                                    "<code>&lt;" + se.name + "&gt;</code>"
+                                );
+                            }
+                        }
+                    }
 
                     // Link to an interface that represents a "type group"?
                     {
@@ -912,7 +916,7 @@ class AntDoclet {
                             // Link to an attribute (of the same or a different ANT type)?
                             for (AntAttribute a : t.attributes) {
                                 if (a.methodDoc == toMethod) {
-                                    String fragment = '#' + a.name;
+                                    String fragment = '#' + a.name + "_detail";
                                     return new Link(
                                         (
                                             antType == null ? tg.subdir + '/' + t.name + fragment :
@@ -933,6 +937,17 @@ class AntDoclet {
                                         + (se.name != null ? se.name : se.type.asClassDoc().qualifiedName())
                                         + "_detail"
                                     );
+                                    String label = se.name;
+                                    if (label != null) {
+                                        label = "&lt;" + se.name + "&gt;";
+                                    } else {
+                                        Tag[] typeGroupNameTags = se.type.asClassDoc().tags("@ant.typeGroupName");
+                                        if (typeGroupNameTags.length >= 1) {
+                                            label = typeGroupNameTags[0].text();
+                                        } else {
+                                            label = "???";
+                                        }
+                                    }
                                     return new Link(
                                         (
                                             antType == null ? tg.subdir + '/' + t.name + ".html" + fragment :
@@ -940,7 +955,7 @@ class AntDoclet {
                                             typeGroup == tg ? antType.name + ".html" + fragment :
                                             "../" + tg.subdir + '/' + antType.name + ".html" + fragment
                                         ),
-                                        "&lt;" + se.name + "&gt;"
+                                        label
                                     );
                                 }
                             }
@@ -982,22 +997,6 @@ class AntDoclet {
                 return new Link(null, to.name());
             }
         };
-    }
-
-    private static boolean
-    typeIs(AntType type, String qualifiedInterfaceName, RootDoc rootDoc) {
-
-        ClassDoc interfaceClassDoc = rootDoc.classNamed(qualifiedInterfaceName);
-        assert interfaceClassDoc != null : qualifiedInterfaceName;
-
-        if (Docs.isSubclassOf(type.classDoc, interfaceClassDoc)) return true;
-
-        ClassDoc adaptTo = type.adaptTo;
-        if (adaptTo != null) {
-            if (Docs.isSubclassOf(adaptTo, interfaceClassDoc)) return true;
-        }
-
-        return false;
     }
 
     private static AntType
@@ -1138,7 +1137,8 @@ class AntDoclet {
                         }
                     }
                 }
-                attributes.add(new AntAttribute(name, md, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
+                Tag groupTag = Tags.optionalTag(md, "@ant.group", rootDoc);
+                attributes.add(new AntAttribute(name, md, type, groupTag == null ? null : groupTag.text()));
             }
         }
         return attributes;
@@ -1202,11 +1202,13 @@ class AntDoclet {
                     }
                 }
             }
-            subelements.add(new AntSubelement(md, name, type, Tags.optionalTag(md, "@ant.group", rootDoc)));
+
+            Tag groupTag = Tags.optionalTag(md, "@ant.group", rootDoc);
+            subelements.add(new AntSubelement(md, name, type, groupTag == null ? null : groupTag.text()));
         }
 
-        String so = Tags.optionalTag(classDoc, "@ant.subelementOrder", rootDoc);
-        if ("inheritedFirst".equals(so)) {
+        Tag sot = Tags.optionalTag(classDoc, "@ant.subelementOrder", rootDoc);
+        if (sot != null && "inheritedFirst".equals(sot.text())) {
             List<AntSubelement> tmp1 = new ArrayList<>();
             List<AntSubelement> tmp2 = new ArrayList<>();
             for (AntSubelement se : subelements) {

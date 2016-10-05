@@ -942,7 +942,7 @@ class TypeHtml extends AbstractDetailHtml {
         }
 
         try {
-            return html.fromJavadocText(tags[0].text(), doc, rootDoc);
+            return html.fromTags(tags[0].inlineTags(), doc, rootDoc);
         } catch (Longjump e) {
             return null;
         }
