@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -758,7 +757,7 @@ class AntDoclet {
                 // JAVADOC structure, we must have a custom link maker.
                 final Html html = new Html(new Html.ExternalJavadocsLinkMaker(
                     this.externalJavadocs,
-                    this.linkMaker(antType, typeGroup, antTypeGroups.values(), this.rootDoc)
+                    this.linkMaker(antType, typeGroup, antTypeGroups, this.rootDoc)
                 ));
 
                 NoTemplate.render(
@@ -782,7 +781,7 @@ class AntDoclet {
             }
         }
 
-        final LinkMaker linkMaker = this.linkMaker(null, null, antTypeGroups.values(), this.rootDoc);
+        final LinkMaker linkMaker = this.linkMaker(null, null, antTypeGroups, this.rootDoc);
         final Html      html      = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
@@ -812,10 +811,10 @@ class AntDoclet {
 
     private LinkMaker
     linkMaker(
-        @Nullable final AntType        antType,
-        @Nullable final AntTypeGroup   typeGroup,
-        final Collection<AntTypeGroup> antTypeGroups,
-        RootDoc                        rootDoc
+        @Nullable final AntType           antType,
+        @Nullable final AntTypeGroup      typeGroup,
+        final Map<ClassDoc, AntTypeGroup> antTypeGroups,
+        RootDoc                           rootDoc
     ) {
 
         return new LinkMaker() {
@@ -827,7 +826,7 @@ class AntDoclet {
                     ClassDoc toClass = (ClassDoc) to;
 
                     // Link to an ANT type in this ANTLIB?
-                    for (AntTypeGroup atg : antTypeGroups) {
+                    for (AntTypeGroup atg : antTypeGroups.values()) {
                         for (AntType t : atg.types) {
                             if (toClass == t.classDoc) {
                                 return new Link(
@@ -854,34 +853,31 @@ class AntDoclet {
                     if (antType != null) {
                         for (AntSubelement se : antType.subelements) {
                             if (toClass == se.type) {
-                                return new Link(
-                                    "#" + toClass.qualifiedName() + "_detail",
-                                    "<code>&lt;" + se.name + "&gt;</code>"
-                                );
+                                if (se.name != null) {
+                                    return new Link(
+                                        "#" + toClass.qualifiedName() + "_detail",
+                                        "<code>&lt;" + se.name + "&gt;</code>"
+                                    );
+                                }
+
+                                AntTypeGroup atg = antTypeGroups.get(toClass);
+                                if (atg != null) {
+                                    return new Link(
+                                        "../overview-summary.html#" + atg.subdir,
+                                        "Any " + atg.name
+                                    );
+                                }
                             }
                         }
                     }
 
-                    // Link to an interface that represents a "type group"?
+                    // Link to an interface that represents a "type group", e.g. "resource collection"?
                     {
-                        Tag[] typeGroupNameTags   = toClass.tags("@ant.typeGroupName");
-                        Tag[] typeGroupSubdirTags = toClass.tags("@ant.typeGroupSubdir");
-
-                        if (typeGroupNameTags.length > 0) {
-                            if (typeGroupNameTags.length != 1) {
-                                rootDoc.printError(
-                                    toClass.position(),
-                                    "Exactly one @ant.typeGroupName tag must be given"
-                                );
-                                throw new Longjump();
-                            }
-                            if (typeGroupSubdirTags.length != 1) {
-                                rootDoc.printError(toClass.position(), "@ant.typeGroupSubdir tag missing");
-                                throw new Longjump();
-                            }
+                        AntTypeGroup atg = antTypeGroups.get(toClass);
+                        if (atg != null) {
                             return new Link(
-                                "../overview-summary.html#" + typeGroupSubdirTags[0].text(),
-                                "Any " + typeGroupNameTags[0].text()
+                                "../overview-summary.html#" + atg.subdir,
+                                "Any " + atg.name
                             );
                         }
                     }
@@ -894,7 +890,7 @@ class AntDoclet {
                     MethodDoc toMethod = (MethodDoc) to;
                     ClassDoc  toClass  = toMethod.containingClass();
 
-                    for (AntTypeGroup tg : antTypeGroups) {
+                    for (AntTypeGroup tg : antTypeGroups.values()) {
                         for (AntType t : tg.types) {
 
 //                            if (t.classDoc != toClass) continue;
@@ -941,21 +937,17 @@ class AntDoclet {
                                     if (label != null) {
                                         label = "&lt;" + se.name + "&gt;";
                                     } else {
-                                        Tag[] typeGroupNameTags = se.type.asClassDoc().tags("@ant.typeGroupName");
-                                        if (typeGroupNameTags.length >= 1) {
-                                            label = typeGroupNameTags[0].text();
-                                        } else {
-                                            label = "???";
-                                        }
+                                        AntTypeGroup atg = antTypeGroups.get(se.type.asClassDoc());
+                                        label = atg != null ? "Any " + atg.name : "???";
                                     }
                                     return new Link(
-                                        (
+                                        (               // href
                                             antType == null ? tg.subdir + '/' + t.name + ".html" + fragment :
                                             toMethod.containingClass() == antType.classDoc ? fragment :
                                             typeGroup == tg ? antType.name + ".html" + fragment :
                                             "../" + tg.subdir + '/' + antType.name + ".html" + fragment
                                         ),
-                                        label
+                                        label           // defaultLabelHtml
                                     );
                                 }
                             }
