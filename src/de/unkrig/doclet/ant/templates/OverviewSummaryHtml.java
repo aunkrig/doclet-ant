@@ -112,7 +112,7 @@ class OverviewSummaryHtml extends AbstractSummaryHtml {
                 "No Frames", "overview-summary.html",
             },
             new String[] {                          // nav4
-                "All Classes", "alldefinitions-noframe.html",
+                "All Types", "alldefinitions-noframe.html",
             },
             new Runnable[] {                        // renderHeaders
                 () -> {

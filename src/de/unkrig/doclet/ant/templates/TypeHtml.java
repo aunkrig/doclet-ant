@@ -172,7 +172,7 @@ class TypeHtml extends AbstractDetailHtml {
                     }
 
                     SectionItem sectionItem = new SectionItem(
-                        a.name,                                            // anchor
+                        a.name + "_attribute",                             // anchor
                         new String[] { summaryTitle, summaryDescription }, // summaryTableCells
                         detailTitle,                                       // detailTitle
                         () -> { TypeHtml.this.p(detailContent); }          // printDetailContent
@@ -243,7 +243,7 @@ class TypeHtml extends AbstractDetailHtml {
                 if (subelement.methodDoc.tags("@deprecated").length > 0) firstSentence = "(deprecated)";
 
                 subelementSectionItems.add(new SectionItem(
-                    anchor,                                          // anchor
+                    anchor + "_subelement",                          // anchor
                     new String[] { summaryNameHtml, firstSentence }, // summaryTableCells
                     summaryNameHtml,                                 // detailTitle
                     () -> {                                          // printDetailContent
@@ -636,7 +636,7 @@ class TypeHtml extends AbstractDetailHtml {
                 rhs = "???";
             }
         } else
-        {
+        if (attributeType instanceof ClassDoc) {
             try {
                 rhs = (
                     "<var>"
@@ -662,6 +662,14 @@ class TypeHtml extends AbstractDetailHtml {
                 );
             }
 
+            if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
+        } else
+        {
+            rhs = (
+                "<var>"
+                + Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated()
+                + "</var>"
+            );
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
         }
 
