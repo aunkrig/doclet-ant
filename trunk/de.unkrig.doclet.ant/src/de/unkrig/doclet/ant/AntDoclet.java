@@ -855,7 +855,7 @@ class AntDoclet {
                             if (toClass == se.type) {
                                 if (se.name != null) {
                                     return new Link(
-                                        "#" + toClass.qualifiedName() + "_detail",
+                                        "#" + toClass.qualifiedName() + "_subelement_detail",
                                         "<code>&lt;" + se.name + "&gt;</code>"
                                     );
                                 }
@@ -890,6 +890,15 @@ class AntDoclet {
                     MethodDoc toMethod = (MethodDoc) to;
                     ClassDoc  toClass  = toMethod.containingClass();
 
+                    // Link to an attribute of this ANT type?
+                    if (antType != null) {
+                        for (AntAttribute a : antType.attributes) {
+                            if (a.methodDoc == toMethod) {
+                                return new Link('#' + a.name + "_attribute_detail", a.name + "=\"...\"");
+                            }
+                        }
+                    }
+
                     for (AntTypeGroup tg : antTypeGroups.values()) {
                         for (AntType t : tg.types) {
 
@@ -912,13 +921,13 @@ class AntDoclet {
                             // Link to an attribute (of the same or a different ANT type)?
                             for (AntAttribute a : t.attributes) {
                                 if (a.methodDoc == toMethod) {
-                                    String fragment = '#' + a.name + "_detail";
+                                    String fragment = '#' + a.name + "_attribute_detail";
                                     return new Link(
                                         (
-                                            antType == null ? tg.subdir + '/' + t.name + fragment :
+                                            antType == null ? tg.subdir + '/' + t.name + ".html" + fragment :
                                             toClass == antType.classDoc ? fragment :
-                                            typeGroup == tg ? t.name + fragment :
-                                            "../" + tg.subdir + '/' + t.name + fragment
+                                            typeGroup == tg ? t.name + ".html" + fragment :
+                                            "../" + tg.subdir + '/' + t.name + ".html" + fragment
                                         ),
                                         a.name + "=\"...\""
                                     );
@@ -931,7 +940,7 @@ class AntDoclet {
                                     String fragment = (
                                         '#'
                                         + (se.name != null ? se.name : se.type.asClassDoc().qualifiedName())
-                                        + "_detail"
+                                        + "_subelement_detail"
                                     );
                                     String label = se.name;
                                     if (label != null) {
