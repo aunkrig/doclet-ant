@@ -302,7 +302,7 @@ class TypeHtml extends AbstractDetailHtml {
                 "No Frames", antType.name + ".html",
             },
             new String[] {                                                 // nav4
-                "All Definitions", home + "alldefinitions-noframe.html",
+                "All Types", home + "../alldefinitions-noframe.html",
             },
             HtmlTemplate.esc(typeGroup.name),                              // subtitle
             typeGroup.typeHeadingMf.format(new String[] { antType.name }), // heading

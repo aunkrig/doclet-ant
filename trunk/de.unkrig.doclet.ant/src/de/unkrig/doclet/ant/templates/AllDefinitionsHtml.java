@@ -32,6 +32,7 @@ import com.sun.javadoc.RootDoc;
 
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.protocol.Longjump;
+import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.doclet.ant.AntDoclet.AntTypeGroup;
 import de.unkrig.notemplate.commons.lang.ConsumerUtil8;
 import de.unkrig.notemplate.javadocish.Options;
@@ -47,7 +48,13 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
      * Renders the contents of the "All Definitions" frame.
      */
     public void
-    render(final Collection<AntTypeGroup> antTypeGroups, final RootDoc rootDoc, Options options, final Html html) {
+    render(
+        final Collection<AntTypeGroup> antTypeGroups,
+        final RootDoc                  rootDoc,
+        Options                        options,
+        final Html                     html,
+        @Nullable final String         target
+    ) {
 
         super.rBottomLeftFrameHtml(
             "All types",                       // windowTitle
@@ -67,7 +74,7 @@ class AllDefinitionsHtml extends AbstractBottomLeftFrameHtml {
                     typeGroup.types.stream().forEach(ConsumerUtil8.asJavaUtil(antType -> {
                         Longjump.catchLongjump(() -> {
                             AllDefinitionsHtml.this.l(
-"      <li>" + html.makeLink(rootDoc, antType.classDoc, false, null, "classFrame", rootDoc) + "</li>"
+"      <li>" + html.makeLink(rootDoc, antType.classDoc, false, null, target, rootDoc) + "</li>"
                             );
                         });
                     }));
