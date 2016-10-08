@@ -789,7 +789,28 @@ class AntDoclet {
             AllDefinitionsHtml.class,
             new File(this.options.destination, "alldefinitions-frame.html"),
             (AllDefinitionsHtml allDefinitionsHtml) -> {
-                allDefinitionsHtml.render(antTypeGroups.values(), AntDoclet.this.rootDoc, AntDoclet.this.options, html);
+                allDefinitionsHtml.render(
+                    antTypeGroups.values(), // antTypeGroups
+                    AntDoclet.this.rootDoc, // rootDoc
+                    AntDoclet.this.options, // options
+                    html,                   // html
+                    "classFrame"            // target
+                );
+            }
+        );
+
+        // Generate the "All definitions" document that is used only in the no-frame variant.
+        NoTemplate.render(
+            AllDefinitionsHtml.class,
+            new File(this.options.destination, "alldefinitions-noframe.html"),
+            (AllDefinitionsHtml allDefinitionsHtml) -> {
+                allDefinitionsHtml.render(
+                    antTypeGroups.values(), // antTypeGroups
+                    AntDoclet.this.rootDoc, // rootDoc
+                    AntDoclet.this.options, // options
+                    html,                   // html
+                    null                    // target
+                );
             }
         );
 
