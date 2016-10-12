@@ -216,7 +216,7 @@ class TypeHtml extends AbstractDetailHtml {
                 } else {
                     anchor = stqn;
                     try {
-                        summaryNameHtml = html.makeLink(
+                        summaryNameHtml = "Any " + html.makeLink(
                             subelementTypeClassDoc, // from
                             subelementTypeClassDoc, // to
                             true,                   // plain
