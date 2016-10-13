@@ -31,6 +31,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -114,6 +115,19 @@ import de.unkrig.notemplate.javadocish.Options;
  *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
  *   <dt>{@code -theme JAVA7|JAVA8}</dt>
  *   <dd>Which style sheets and resources to use.</dd>
+ *   <dt>{@code -splitindex}</dt>
+ *   <dd>
+ *     Splits the index file into multiple files, alphabetically, one file per letter, plus a file for any index
+ *     entries that start with non-alphabetical characters.
+ *   </dd>
+ *   <dt>{@code -charset} <var>name</var></dt>
+ *   <dd>
+ *     Specifies the HTML character set for this document.
+ *   </dd>
+ *   <dt>{@code -docencoding} <var>name</var></dt>
+ *   <dd>
+ *     Specifies the encoding of the generated HTML files.
+ *   </dd>
  * </dl>
  */
 public
@@ -439,6 +453,7 @@ class AntDoclet {
 
         // Options that go into the "Options" object:
         if ("-d".equals(option))           return 2;
+        if ("-splitindex".equals(option))  return 2;
         if ("-windowtitle".equals(option)) return 2;
         if ("-doctitle".equals(option))    return 2;
         if ("-header".equals(option))      return 2;
@@ -446,6 +461,8 @@ class AntDoclet {
         if ("-top".equals(option))         return 2;
         if ("-bottom".equals(option))      return 2;
         if ("-notimestamp".equals(option)) return 1;
+        if ("-charset".equals(option))     return 2;
+        if ("-docencoding".equals(option)) return 2;
 
         // "Other" options:
         if ("-antlib-file".equals(option)) return 2;
@@ -477,6 +494,9 @@ class AntDoclet {
             if ("-d".equals(option[0])) {
                 options.destination = new File(option[1]);
             } else
+            if ("-splitindex".equals(option[0])) {
+                options.splitIndex = true;
+            } else
             if ("-windowtitle".equals(option[0])) {
                 options.windowTitle = option[1];
             } else
@@ -497,6 +517,12 @@ class AntDoclet {
             } else
             if ("-notimestamp".equals(option[0])) {
                 options.noTimestamp = Boolean.parseBoolean(option[1]);
+            } else
+            if ("-charset".equals(option[0])) {
+                options.htmlCharset = option[1];
+            } else
+            if ("-docencoding".equals(option[0])) {
+                options.documentCharset = Charset.forName(option[1]);
             } else
 
             // "Other" options.
@@ -614,7 +640,9 @@ class AntDoclet {
         NoTemplate.render(
             IndexHtml.class,
             new File(this.options.destination, "index.html"),
-            (IndexHtml indexHtml) -> { indexHtml.render(AntDoclet.this.options); }
+            (IndexHtml indexHtml) -> { indexHtml.render(AntDoclet.this.options); },
+            true,
+            this.options.documentCharset
         );
 
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -776,7 +804,9 @@ class AntDoclet {
                                 AntDoclet.this.options
                             );
                         }
-                    }
+                    },
+                    true,
+                    this.options.documentCharset
                 );
             }
         }
@@ -796,7 +826,9 @@ class AntDoclet {
                     html,                   // html
                     "classFrame"            // target
                 );
-            }
+            },
+            true,
+            this.options.documentCharset
         );
 
         // Generate the "All definitions" document that is used only in the no-frame variant.
@@ -811,7 +843,9 @@ class AntDoclet {
                     html,                   // html
                     null                    // target
                 );
-            }
+            },
+            true,
+            this.options.documentCharset
         );
 
         // Generate "overview-summary.html" - the document that is initially loaded into the "right frame" and displays
@@ -826,7 +860,9 @@ class AntDoclet {
                     AntDoclet.this.options,
                     html
                 );
-            }
+            },
+            true,
+            this.options.documentCharset
         );
     }
 
