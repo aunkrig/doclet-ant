@@ -106,7 +106,7 @@ import de.unkrig.notemplate.javadocish.Options;
  *   <dd>Where to create documentation in HTML format (optional).</dd>
  *   <dt>{@code -mediawiki-output-directory} <var>dir</var></dt>
  *   <dd>Where to create documentation in MEDIAWIKI markup format (optional).</dd>
- *   <dt>{@code -link <var>target-url</var></dt>
+ *   <dt>{@code -link} <var>target-url</var></dt>
  *   <dt>{@code -linkoffline} <var>target-url</var> <var>package-list-url</var></dt>
  *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.</dd>
  *   <dt>{@code -doctitle} <var>text</var></dt>
@@ -212,11 +212,11 @@ class AntDoclet {
             Properties properties;
             {
                 try {
-                    properties = this.loadPropertiesFromResource(DEFAULTS_PROPERTIES_RESOURCE_NAME);
+                    properties = this.loadPropertiesFromResource(AntDoclet.DEFAULTS_PROPERTIES_RESOURCE_NAME);
                 } catch (IOException ioe) {
                     throw ExceptionUtil.wrap((
                         "Could not open resource \""
-                        + DEFAULTS_PROPERTIES_RESOURCE_NAME
+                        + AntDoclet.DEFAULTS_PROPERTIES_RESOURCE_NAME
                         + "\"; make sure that \"ant.jar\" is on the doclet's classpath"
                     ), ioe);
                 }

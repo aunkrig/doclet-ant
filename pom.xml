@@ -8,7 +8,7 @@
 
   <groupId>de.unkrig</groupId>
   <artifactId>doclet-ant</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.1</version>
 
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
@@ -19,7 +19,7 @@
     <dependency>
       <groupId>de.unkrig</groupId>
       <artifactId>de-unkrig-commons</artifactId>
-      <version>1.1.11-SNAPSHOT</version>
+      <version>1.1.12</version>
     </dependency>
     <dependency>
       <groupId>de.unkrig</groupId>
@@ -31,7 +31,140 @@
       <artifactId>tools</artifactId>
       <version>1.8.0</version>
       <scope>system</scope>
-      <systemPath>C:/Program Files/Java/jdk1.8.0_05/lib/tools.jar</systemPath>
+      <systemPath>C:/Program Files/Java/jdk1.8.0_45/lib/tools.jar</systemPath>
+    </dependency>
+    <dependency>
+    	<groupId>junit</groupId>
+    	<artifactId>junit</artifactId>
+    	<version>4.11</version>
+    	<scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id> <!-- this is used for inheritance merges -->
+            <phase>package</phase> <!-- bind to the packaging phase -->
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.7</version>
+        <extensions>true</extensions>
+        <configuration>
+           <serverId>ossrh</serverId>
+           <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+           <autoReleaseAfterClose>false</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.5</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.10.4</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+
+        <configuration>
+          <author>false</author>
+          <use>false</use>
+          <version>false</version>
+          <additionalparam>-Xdoclint:none</additionalparam>
+          <encoding>UTF-8</encoding>
+          <quiet>true</quiet>
+          <offlineLinks>
+            <offlineLink>
+              <url>http://commons.unkrig.de/javadoc</url>
+              <location>../../package-lists/de.unkrig.commons</location>
+            </offlineLink>
+            <offlineLink>
+              <url>http://api.dpml.net/org/apache/ant/1.7.0</url>
+              <location>../../package-lists/org.apache.ant</location>
+            </offlineLink>
+          </offlineLinks>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <name>The ANT doclet</name>
+
+  <description>Generates (JAVADOC-like) HTML documentation for APACHE ANT antlibs. </description>
+  <organization>
+  	<url>http://unkrig.de/w/ANT_doclet</url>
+  </organization>
+
+  <scm>
+  	<url>https://svn.code.sf.net/p/loggifier/code/trunk/de.unkrig.doclet.ant</url>
+  </scm>
+
+  <licenses>
+    <license>
+      <name>New BSD License</name>
+      <url>http://unkrig.de/w/ANT_doclet#License</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>aunkrig</id>
+      <name>Arno Unkrig</name>
+      <roles>
+        <role>Developer</role>
+        <role>Release Manager</role>
+      </roles>
+    </developer>
+  </developers>
+  <url>http://unkrig.de/w/ANT_doclet</url>
 </project>
