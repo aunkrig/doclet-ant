@@ -620,14 +620,18 @@ class TypeHtml extends AbstractDetailHtml {
                     );
                     rhs = "???";
                 }
-            } catch (Exception e) {
+            } catch (Exception | NoClassDefFoundError e) {
+                
+                Throwable t = e;
+                for (Throwable t2 = t.getCause(); t2 != null; t2 = (t = t2).getCause());
+                
                 rootDoc.printError(
                     attribute.methodDoc.position(),
                     (
                         "Loading enumerated attribute type \""
                         + attributeClassName
                         + "\": "
-                        + e.toString()
+                        + t.toString()
                         + ": Make sure that \"ant.jar\" and class \""
                         + attributeClassName
                         + "\" are on the doclet's classpath"
