@@ -133,6 +133,8 @@ import de.unkrig.notemplate.javadocish.Options;
 public
 class AntDoclet {
 
+    private static final String DEFAULTS_PROPERTIES_RESOURCE_NAME = "org/apache/tools/ant/taskdefs/defaults.properties";
+
     static { AssertionUtil.enableAssertionsForThisClass(); }
 
     private static final Pattern ADD_TEXT_METHOD_NAME          = Pattern.compile("addText");
@@ -208,10 +210,16 @@ class AntDoclet {
         // Determine the documentation URLs for the ANT standard tasks.
         {
             Properties properties;
-            try {
-                properties = this.loadPropertiesFromResource("org/apache/tools/ant/taskdefs/defaults.properties");
-            } catch (IOException ioe) {
-                throw ExceptionUtil.wrap("Make sure that \"ant.jar\" is on the doclet's classpath", ioe);
+            {
+                try {
+                    properties = this.loadPropertiesFromResource(DEFAULTS_PROPERTIES_RESOURCE_NAME);
+                } catch (IOException ioe) {
+                    throw ExceptionUtil.wrap((
+                        "Could not open resource \""
+                        + DEFAULTS_PROPERTIES_RESOURCE_NAME
+                        + "\"; make sure that \"ant.jar\" is on the doclet's classpath"
+                    ), ioe);
+                }
             }
 
             for (Entry<Object, Object> e : properties.entrySet()) {
@@ -561,11 +569,10 @@ class AntDoclet {
                 );
 
                 URL packageListUrl = (
-                    packageListLocation.startsWith("http.") || packageListLocation.startsWith("file:")
+                    packageListLocation.startsWith("http:") || packageListLocation.startsWith("file:")
                     ? new URL(new URL("file", null, -1, System.getProperty("user.dir")), packageListLocation)
-                    : new URL("file", null, -1, packageListLocation)
+                    : new URL("file", null, new File(packageListLocation).getAbsolutePath() + '/')
                 );
-
                 Docs.readExternalJavadocs(
                     externalDocumentationUrl2, // targetUrl
                     packageListUrl,            // packageListUrl
