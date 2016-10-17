@@ -31,13 +31,19 @@
       <artifactId>tools</artifactId>
       <version>1.8.0</version>
       <scope>system</scope>
-      <systemPath>C:/Program Files/Java/jdk1.8.0_45/lib/tools.jar</systemPath>
+      <systemPath>${java.home}/../lib/tools.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.11</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+    	<groupId>de.unkrig</groupId>
+    	<artifactId>html2txt</artifactId>
+    	<version>1.0.0-SNAPSHOT</version>
+    	<scope>runtime</scope>
     </dependency>
   </dependencies>
 
@@ -109,7 +115,7 @@
         <executions>
           <execution>
             <id>make-maindoc</id>
-            <phase>generate-resources</phase>
+            <phase>compile</phase>
             <goals>
               <goal>javadoc</goal>
             </goals>
@@ -120,7 +126,7 @@
           <useStandardDocletOptions>false</useStandardDocletOptions>
 
           <!-- The MAIN doclet requires JAVADOC 8. -->
-          <javadocExecutable>c:/Program Files/Java/jdk1.8.0_45/bin/javadoc.exe</javadocExecutable>
+          <javadocExecutable>${jdk.8.home}/bin/javadoc.exe</javadocExecutable>
 
           <quiet>true</quiet>
           <encoding>UTF-8</encoding>
@@ -139,6 +145,29 @@
           </additionalparam>
 
           <destDir>../../classes</destDir>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
+        <executions>
+          <execution>
+            <id>html2txt-maindoc</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+
+        <configuration>
+          <mainClass>de.unkrig.html2txt.Main</mainClass>
+          <arguments>
+            <argument>target/classes/de/unkrig/doclet/ant/AntDoclet.start(RootDoc).html</argument>
+            <argument>target/classes/de/unkrig/doclet/ant/AntDoclet.start(RootDoc).txt</argument>
+          </arguments>
         </configuration>
       </plugin>
     </plugins>
