@@ -13,6 +13,7 @@
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <inceptionYear>2015</inceptionYear>
   </properties>
 
   <dependencies>
@@ -34,10 +35,10 @@
       <systemPath>C:/Program Files/Java/jdk1.8.0_45/lib/tools.jar</systemPath>
     </dependency>
     <dependency>
-    	<groupId>junit</groupId>
-    	<artifactId>junit</artifactId>
-    	<version>4.11</version>
-    	<scope>test</scope>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -108,30 +109,56 @@
         <version>2.10.4</version>
         <executions>
           <execution>
-            <id>attach-javadocs</id>
+            <id>make-maindoc</id>
+            <phase>generate-resources</phase>
             <goals>
-              <goal>jar</goal>
+              <goal>javadoc</goal>
             </goals>
           </execution>
         </executions>
 
         <configuration>
+          <useStandardDocletOptions>true</useStandardDocletOptions>
+
+          <!-- The MAIN doclet requires JAVADOC 8. -->
+          <javadocExecutable>c:/Program Files/Java/jdk1.8.0_45/bin/javadoc.exe</javadocExecutable>
+
+          <quiet>true</quiet>
+ 
+          <doclet>de.unkrig.doclet.main.MainDoclet</doclet>
+          <docletPath>
+            ../classes
+          </docletPath>
+          <docletArtifacts>
+            <docletArtifact>
+              <groupId>de.unkrig</groupId>
+              <artifactId>doclet-main</artifactId>
+              <version>1.0.0-SNAPSHOT</version>
+            </docletArtifact>
+          </docletArtifacts>
+
+          <additionalparam>
+            -method start(RootDoc)
+          </additionalparam>
+
           <author>false</author>
           <use>false</use>
           <version>false</version>
-          <additionalparam>-Xdoclint:none</additionalparam>
           <encoding>UTF-8</encoding>
-          <quiet>true</quiet>
-          <offlineLinks>
-            <offlineLink>
-              <url>http://commons.unkrig.de/javadoc</url>
-              <location>../../package-lists/de.unkrig.commons</location>
-            </offlineLink>
-            <offlineLink>
-              <url>http://api.dpml.net/org/apache/ant/1.7.0</url>
-              <location>../../package-lists/org.apache.ant</location>
-            </offlineLink>
-          </offlineLinks>
+
+<!--           <offlineLinks> -->
+<!--             <offlineLink> -->
+<!--               <url>http://commons.unkrig.de/javadoc</url> -->
+<!--               <location>../../../package-lists/de.unkrig.commons</location> -->
+<!--             </offlineLink> -->
+<!--             <offlineLink> -->
+<!--               <url>http://api.dpml.net/org/apache/ant/1.7.0</url> -->
+<!--               <location>../../../package-lists/org.apache.ant</location> -->
+<!--             </offlineLink> -->
+<!--           </offlineLinks> -->
+
+          <destDir>../../../src/main/resources</destDir>
+          <outputDir>../../../src/main/resources</outputDir>
         </configuration>
       </plugin>
     </plugins>
@@ -139,8 +166,11 @@
 
   <name>The ANT doclet</name>
 
-  <description>Generates (JAVADOC-like) HTML documentation for APACHE ANT antlibs. </description>
+  <description>
+    Generates (JAVADOC-like) HTML documentation for APACHE ANT antlibs.
+  </description>
   <organization>
+    <name>Arno Unkrig</name>
   	<url>http://unkrig.de/w/ANT_doclet</url>
   </organization>
 
