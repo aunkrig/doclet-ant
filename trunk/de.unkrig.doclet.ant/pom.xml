@@ -13,7 +13,6 @@
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <inceptionYear>2015</inceptionYear>
   </properties>
 
   <dependencies>
@@ -118,47 +117,28 @@
         </executions>
 
         <configuration>
-          <useStandardDocletOptions>true</useStandardDocletOptions>
+          <useStandardDocletOptions>false</useStandardDocletOptions>
 
           <!-- The MAIN doclet requires JAVADOC 8. -->
           <javadocExecutable>c:/Program Files/Java/jdk1.8.0_45/bin/javadoc.exe</javadocExecutable>
 
           <quiet>true</quiet>
+          <encoding>UTF-8</encoding>
  
           <doclet>de.unkrig.doclet.main.MainDoclet</doclet>
-          <docletPath>
-            ../classes
-          </docletPath>
-          <docletArtifacts>
-            <docletArtifact>
-              <groupId>de.unkrig</groupId>
-              <artifactId>doclet-main</artifactId>
-              <version>1.0.0-SNAPSHOT</version>
-            </docletArtifact>
-          </docletArtifacts>
+          <docletArtifact>
+            <groupId>de.unkrig</groupId>
+            <artifactId>doclet-main</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+          </docletArtifact>
 
           <additionalparam>
+            -charset UTF-8
+            -docencoding UTF-8
             -method start(RootDoc)
           </additionalparam>
 
-          <author>false</author>
-          <use>false</use>
-          <version>false</version>
-          <encoding>UTF-8</encoding>
-
-<!--           <offlineLinks> -->
-<!--             <offlineLink> -->
-<!--               <url>http://commons.unkrig.de/javadoc</url> -->
-<!--               <location>../../../package-lists/de.unkrig.commons</location> -->
-<!--             </offlineLink> -->
-<!--             <offlineLink> -->
-<!--               <url>http://api.dpml.net/org/apache/ant/1.7.0</url> -->
-<!--               <location>../../../package-lists/org.apache.ant</location> -->
-<!--             </offlineLink> -->
-<!--           </offlineLinks> -->
-
-          <destDir>../../../src/main/resources</destDir>
-          <outputDir>../../../src/main/resources</outputDir>
+          <destDir>../../classes</destDir>
         </configuration>
       </plugin>
     </plugins>
