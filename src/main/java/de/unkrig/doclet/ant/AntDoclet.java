@@ -92,43 +92,9 @@ import de.unkrig.notemplate.javadocish.Options;
 
 /**
  * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
- * <p>
- *   Opens, reads and parses an <a href="http://ant.apache.org/manual/Types/antlib.html">ANTLIB</a> file and generates
- *   one document per type, task, macro, preset and script defined therein.
- * </p>
- * <p>
- *   Supports the following command line options:
- * </p>
- * <dl>
- *   <dt>{@code -antlib-file} <var>file</var></dt>
- *   <dd>Source of task names an class names (mandatory).</dd>
- *   <dt>{@code -html-output-directory} <var>dir</var></dt>
- *   <dd>Where to create documentation in HTML format (optional).</dd>
- *   <dt>{@code -mediawiki-output-directory} <var>dir</var></dt>
- *   <dd>Where to create documentation in MEDIAWIKI markup format (optional).</dd>
- *   <dt>{@code -link} <var>target-url</var></dt>
- *   <dt>{@code -linkoffline} <var>target-url</var> <var>package-list-url</var></dt>
- *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.</dd>
- *   <dt>{@code -doctitle} <var>text</var></dt>
- *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.</dd>
- *   <dt>{@code -windowtitle} <var>text</var></dt>
- *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
- *   <dt>{@code -theme JAVA7|JAVA8}</dt>
- *   <dd>Which style sheets and resources to use.</dd>
- *   <dt>{@code -splitindex}</dt>
- *   <dd>
- *     Splits the index file into multiple files, alphabetically, one file per letter, plus a file for any index
- *     entries that start with non-alphabetical characters.
- *   </dd>
- *   <dt>{@code -charset} <var>name</var></dt>
- *   <dd>
- *     Specifies the HTML character set for this document.
- *   </dd>
- *   <dt>{@code -docencoding} <var>name</var></dt>
- *   <dd>
- *     Specifies the encoding of the generated HTML files.
- *   </dd>
- * </dl>
+ *
+ * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/javadoc/doclet/overview.html">"Doclet
+ *      Overview"</a>
  */
 public
 class AntDoclet {
@@ -482,8 +448,44 @@ class AntDoclet {
     }
 
     /**
-     * See <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/javadoc/doclet/overview.html">"Doclet
-     * Overview"</a>.
+     * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
+     * <p>
+     *   Opens, reads and parses an <a href="http://ant.apache.org/manual/Types/antlib.html">ANTLIB</a> file and generates
+     *   one document per type, task, macro, preset and script defined therein.
+     * </p>
+     * <p>
+     *   Supports the following command line options:
+     * </p>
+     * <dl>
+     *   <dt>{@code -antlib-file} <var>file</var></dt>
+     *   <dd>Source of task names an class names (mandatory).</dd>
+     *   <dt>{@code -html-output-directory} <var>dir</var></dt>
+     *   <dd>Where to create documentation in HTML format (optional).</dd>
+     *   <dt>{@code -mediawiki-output-directory} <var>dir</var></dt>
+     *   <dd>Where to create documentation in MEDIAWIKI markup format (optional).</dd>
+     *   <dt>{@code -link} <var>target-url</var></dt>
+     *   <dt>{@code -linkoffline} <var>target-url</var> <var>package-list-url</var></dt>
+     *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.</dd>
+     *   <dt>{@code -doctitle} <var>text</var></dt>
+     *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.</dd>
+     *   <dt>{@code -windowtitle} <var>text</var></dt>
+     *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
+     *   <dt>{@code -theme JAVA7|JAVA8}</dt>
+     *   <dd>Which style sheets and resources to use.</dd>
+     *   <dt>{@code -splitindex}</dt>
+     *   <dd>
+     *     Splits the index file into multiple files, alphabetically, one file per letter, plus a file for any index
+     *     entries that start with non-alphabetical characters.
+     *   </dd>
+     *   <dt>{@code -charset} <var>name</var></dt>
+     *   <dd>
+     *     Specifies the HTML character set for this document.
+     *   </dd>
+     *   <dt>{@code -docencoding} <var>name</var></dt>
+     *   <dd>
+     *     Specifies the encoding of the generated HTML files.
+     *   </dd>
+     * </dl>
      */
     public static boolean
     start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException {
