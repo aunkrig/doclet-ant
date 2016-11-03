@@ -12,16 +12,16 @@
  *       following disclaimer.
  *    2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
  *       following disclaimer in the documentation and/or other materials provided with the distribution.
- *    3. The name of the author may not be used to endorse or promote products derived from this software without
- *       specific prior written permission.
+ *    3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote
+ *       products derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
- * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 package de.unkrig.doclet.ant;
@@ -113,7 +113,7 @@ class AntDoclet {
 
     private RootDoc                                rootDoc;
     private final Options                          options;
-    private final File                             antlibFile;
+    private final List<File>                       antlibFiles;
     private final Map<String /*packageName*/, URL> externalJavadocs;
     private final Theme                            theme;
     @Nullable private final String[]               sourcePath;
@@ -127,7 +127,7 @@ class AntDoclet {
     AntDoclet(
         RootDoc            rootDoc,
         Options            options,
-        File               antlibFile,
+        List<File>         antlibFiles,
         Map<String, URL>   externalJavadocs,
         Theme              theme,
         @Nullable String[] sourcePath
@@ -135,7 +135,7 @@ class AntDoclet {
 
         this.rootDoc          = rootDoc;
         this.options          = options;
-        this.antlibFile       = antlibFile;
+        this.antlibFiles      = antlibFiles;
         this.externalJavadocs = externalJavadocs;
         this.theme            = theme;
         this.sourcePath       = sourcePath;
@@ -372,8 +372,7 @@ class AntDoclet {
         public final String           name;
         public final MethodDoc        methodDoc;
         public final Type             type;
-        @Nullable
-        public final String group;
+        @Nullable public final String group;
 
         public
         AntAttribute(String name, MethodDoc methodDoc, Type type, @Nullable String group) {
@@ -448,10 +447,11 @@ class AntDoclet {
     }
 
     /**
-     * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other artifacts.
+     * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other
+     * artifacts.
      * <p>
-     *   Opens, reads and parses an <a href="http://ant.apache.org/manual/Types/antlib.html">ANTLIB</a> file and generates
-     *   one document per type, task, macro, preset and script defined therein.
+     *   Opens, reads and parses an <a href="http://ant.apache.org/manual/Types/antlib.html">ANTLIB</a> file and
+     *   generates one document per type, task, macro, preset and script defined therein.
      * </p>
      * <p>
      *   Supports the following command line options:
@@ -465,11 +465,17 @@ class AntDoclet {
      *   <dd>Where to create documentation in MEDIAWIKI markup format (optional).</dd>
      *   <dt>{@code -link} <var>target-url</var></dt>
      *   <dt>{@code -linkoffline} <var>target-url</var> <var>package-list-url</var></dt>
-     *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.</dd>
+     *   <dd>
+     *     See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.
+     *   </dd>
      *   <dt>{@code -doctitle} <var>text</var></dt>
-     *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.</dd>
+     *   <dd>
+     *     See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.
+     *   </dd>
      *   <dt>{@code -windowtitle} <var>text</var></dt>
-     *   <dd>See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.</dd>
+     *   <dd>
+     *     See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.
+     *   </dd>
      *   <dt>{@code -theme JAVA7|JAVA8}</dt>
      *   <dd>Which style sheets and resources to use.</dd>
      *   <dt>{@code -splitindex}</dt>
@@ -490,7 +496,7 @@ class AntDoclet {
     public static boolean
     start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException {
 
-        File                                              antlibFile       = new File("antlib.xml");
+        List<File>                                        antlibFiles      = new ArrayList<>();
         final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<>();
         Theme                                             theme            = Theme.JAVA8;
         String[]                                          sourcePath       = null;
@@ -537,7 +543,7 @@ class AntDoclet {
 
             // "Other" options.
             if ("-antlib-file".equals(option[0])) {
-                antlibFile = new File(option[1]);
+                antlibFiles.add(new File(option[1]));
             } else
             if ("-link".equals(option[0])) {
 
@@ -596,7 +602,7 @@ class AntDoclet {
             }
         }
 
-        new AntDoclet(rootDoc, options, antlibFile, externalJavadocs, theme, sourcePath).start2();
+        new AntDoclet(rootDoc, options, antlibFiles, externalJavadocs, theme, sourcePath).start2();
 
         return true;
     }
@@ -653,13 +659,7 @@ class AntDoclet {
             true,
             this.options.documentCharset
         );
-
-        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
-        Document               document               = documentBuilder.parse(this.antlibFile);
-
-        document.getDocumentElement().normalize();
-
+        
         final LinkedHashMap<ClassDoc, AntTypeGroup> antTypeGroups = new LinkedHashMap<>();
         AntTypeGroup                                antTypeGroupTasks, antTypeGroupOther;
         antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.Task"), (antTypeGroupTasks = new AntTypeGroup(
@@ -701,66 +701,75 @@ class AntDoclet {
             "<code>&lt;{0}&gt;</code>"
         )));
 
-        // Now parse the contents of the given ANTLIB file; see
-        // https://ant.apache.org/manual/Types/antlib.html
-        for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
-            AntType antType;
-            try {
-                antType = AntDoclet.parseType(taskdefElement, this.rootDoc);
-            } catch (Longjump l) {
-                continue;
-            }
-            antTypeGroupTasks.types.add(antType);
-        }
-        for (Element typedefElement : IterableUtil.concat(
-            AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
-            AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
-        )) {
-            AntType antType;
-            try {
-                antType = AntDoclet.parseType(typedefElement, this.rootDoc);
-            } catch (Longjump l) {
-                continue;
-            }
-
-            boolean hadOneTypeGroup = false;
-            for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
-
-                AntTypeGroup atg = antTypeGroups.get(cd);
-                if (atg == null) {
-
-                    Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
-                    if (typeGroupSubdirTag == null) continue;
-
-                    String typeGroupSubdir  = typeGroupSubdirTag.text();
-                    String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc).text();
-                    String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc).text();
-                    String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc).text();
-                    String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc).text();
-
-                    antTypeGroups.put(cd, (atg = new AntTypeGroup(
-                        typeGroupSubdir,  // subdir
-                        typeGroupName,    // name
-                        typeGroupHeading, // heading
-                        typeTitleMf,      // typeTitleMf
-                        typeHeadingMf     // typeHeadingMf
-                    )));
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
+        
+        for (File antlibFile : this.antlibFiles) {
+            Document document = documentBuilder.parse(antlibFile);
+    
+            document.getDocumentElement().normalize();
+    
+            // Now parse the contents of the given ANTLIB file; see
+            // https://ant.apache.org/manual/Types/antlib.html
+            for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
+                AntType antType;
+                try {
+                    antType = AntDoclet.parseType(taskdefElement, this.rootDoc);
+                } catch (Longjump l) {
+                    continue;
                 }
-
-                atg.types.add(antType);
-                hadOneTypeGroup = true;
+                antTypeGroupTasks.types.add(antType);
             }
-
-            if (!hadOneTypeGroup) antTypeGroupOther.types.add(antType);
-        }
-        if (document.getElementsByTagName("macrodef").getLength() > 0) {
-            this.rootDoc.printWarning("<macrodef>s are not yet supported");
-        }
-        if (document.getElementsByTagName("presetdef").getLength() > 0) {
-            this.rootDoc.printWarning("<presetdef>s are not yet supported");
-        }
-        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-            this.rootDoc.printWarning("<scriptdef>s are not yet supported");
+            for (Element typedefElement : IterableUtil.concat(
+                AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
+                AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
+            )) {
+                AntType antType;
+                try {
+                    antType = AntDoclet.parseType(typedefElement, this.rootDoc);
+                } catch (Longjump l) {
+                    continue;
+                }
+    
+                boolean hadOneTypeGroup = false;
+                for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
+    
+                    AntTypeGroup atg = antTypeGroups.get(cd);
+                    if (atg == null) {
+    
+                        Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
+                        if (typeGroupSubdirTag == null) continue;
+    
+                        String typeGroupSubdir  = typeGroupSubdirTag.text();
+                        String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc).text();
+                        String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc).text();
+                        String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc).text();
+                        String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc).text();
+    
+                        antTypeGroups.put(cd, (atg = new AntTypeGroup(
+                            typeGroupSubdir,  // subdir
+                            typeGroupName,    // name
+                            typeGroupHeading, // heading
+                            typeTitleMf,      // typeTitleMf
+                            typeHeadingMf     // typeHeadingMf
+                        )));
+                    }
+    
+                    atg.types.add(antType);
+                    hadOneTypeGroup = true;
+                }
+    
+                if (!hadOneTypeGroup) antTypeGroupOther.types.add(antType);
+            }
+            if (document.getElementsByTagName("macrodef").getLength() > 0) {
+                this.rootDoc.printWarning("<macrodef>s are not yet supported");
+            }
+            if (document.getElementsByTagName("presetdef").getLength() > 0) {
+                this.rootDoc.printWarning("<presetdef>s are not yet supported");
+            }
+            if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+                this.rootDoc.printWarning("<scriptdef>s are not yet supported");
+            }
         }
 
         // Now render the type documentation pages, e.g. "tasks/myTask.html"
