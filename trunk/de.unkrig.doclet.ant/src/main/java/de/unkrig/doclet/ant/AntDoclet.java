@@ -701,74 +701,77 @@ class AntDoclet {
             "<code>&lt;{0}&gt;</code>"
         )));
 
-        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
-        
-        for (File antlibFile : this.antlibFiles) {
-            Document document = documentBuilder.parse(antlibFile);
-    
-            document.getDocumentElement().normalize();
-    
-            // Now parse the contents of the given ANTLIB file; see
-            // https://ant.apache.org/manual/Types/antlib.html
-            for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
-                AntType antType;
-                try {
-                    antType = AntDoclet.parseType(taskdefElement, this.rootDoc);
-                } catch (Longjump l) {
-                    continue;
-                }
-                antTypeGroupTasks.types.add(antType);
-            }
-            for (Element typedefElement : IterableUtil.concat(
-                AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
-                AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
-            )) {
-                AntType antType;
-                try {
-                    antType = AntDoclet.parseType(typedefElement, this.rootDoc);
-                } catch (Longjump l) {
-                    continue;
-                }
-    
-                boolean hadOneTypeGroup = false;
-                for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
-    
-                    AntTypeGroup atg = antTypeGroups.get(cd);
-                    if (atg == null) {
-    
-                        Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
-                        if (typeGroupSubdirTag == null) continue;
-    
-                        String typeGroupSubdir  = typeGroupSubdirTag.text();
-                        String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc).text();
-                        String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc).text();
-                        String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc).text();
-                        String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc).text();
-    
-                        antTypeGroups.put(cd, (atg = new AntTypeGroup(
-                            typeGroupSubdir,  // subdir
-                            typeGroupName,    // name
-                            typeGroupHeading, // heading
-                            typeTitleMf,      // typeTitleMf
-                            typeHeadingMf     // typeHeadingMf
-                        )));
-                    }
-    
-                    atg.types.add(antType);
-                    hadOneTypeGroup = true;
-                }
-    
-                if (!hadOneTypeGroup) antTypeGroupOther.types.add(antType);
-            }
-            if (document.getElementsByTagName("macrodef").getLength() > 0) {
-                this.rootDoc.printWarning("<macrodef>s are not yet supported");
-            }
-            if (document.getElementsByTagName("presetdef").getLength() > 0) {
-                this.rootDoc.printWarning("<presetdef>s are not yet supported");
-            }
-            if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-                this.rootDoc.printWarning("<scriptdef>s are not yet supported");
+        {
+	        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+	        DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
+	
+	        for (File antlibFile : this.antlibFiles) {
+	            Document document = documentBuilder.parse(antlibFile);
+	    
+	            document.getDocumentElement().normalize();
+	    
+	            // Now parse the contents of the given ANTLIB file; see
+	            // https://ant.apache.org/manual/Types/antlib.html
+	            for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
+	                AntType antType;
+	                try {
+	                    antType = AntDoclet.parseType(taskdefElement, this.rootDoc);
+	                } catch (Longjump l) {
+	                    continue;
+	                }
+	                antTypeGroupTasks.types.add(antType);
+	            }
+	            for (Element typedefElement : IterableUtil.concat(
+	                AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
+	                AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
+	            )) {
+	                AntType antType;
+	                try {
+	                    antType = AntDoclet.parseType(typedefElement, this.rootDoc);
+	                } catch (Longjump l) {
+	                    continue;
+	                }
+	    
+	                boolean hadOneTypeGroup = false;
+	                for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
+	    
+	                    AntTypeGroup atg = antTypeGroups.get(cd);
+	                    if (atg == null) {
+	    
+	                        Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
+	                        if (typeGroupSubdirTag == null) continue;
+
+	                        // SUPPRESS CHECKSTYLE LineLength:5
+	                        String typeGroupSubdir  = typeGroupSubdirTag.text();
+	                        String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc).text();
+	                        String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc).text();
+	                        String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc).text();
+	                        String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc).text();
+	    
+	                        antTypeGroups.put(cd, (atg = new AntTypeGroup(
+	                            typeGroupSubdir,  // subdir
+	                            typeGroupName,    // name
+	                            typeGroupHeading, // heading
+	                            typeTitleMf,      // typeTitleMf
+	                            typeHeadingMf     // typeHeadingMf
+	                        )));
+	                    }
+	    
+	                    atg.types.add(antType);
+	                    hadOneTypeGroup = true;
+	                }
+	    
+	                if (!hadOneTypeGroup) antTypeGroupOther.types.add(antType);
+	            }
+	            if (document.getElementsByTagName("macrodef").getLength() > 0) {
+	                this.rootDoc.printWarning("<macrodef>s are not yet supported");
+	            }
+	            if (document.getElementsByTagName("presetdef").getLength() > 0) {
+	                this.rootDoc.printWarning("<presetdef>s are not yet supported");
+	            }
+	            if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+	                this.rootDoc.printWarning("<scriptdef>s are not yet supported");
+	            }
             }
         }
 
