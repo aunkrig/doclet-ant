@@ -34,6 +34,8 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -45,9 +47,9 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -81,6 +83,7 @@ import de.unkrig.commons.lang.protocol.Mapping;
 import de.unkrig.commons.lang.protocol.Mappings;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.Notations;
+import de.unkrig.commons.text.xml.XmlUtil;
 import de.unkrig.commons.util.collections.IterableUtil;
 import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.templates.AllDefinitionsHtml;
@@ -113,7 +116,8 @@ class AntDoclet {
 
     private RootDoc                                rootDoc;
     private final Options                          options;
-    private final List<File>                       antlibFiles;
+    private final Collection<String>               antlibResources;
+    private final Collection<File>                 antlibFiles;
     private final Map<String /*packageName*/, URL> externalJavadocs;
     private final Theme                            theme;
     @Nullable private final String[]               sourcePath;
@@ -127,7 +131,8 @@ class AntDoclet {
     AntDoclet(
         RootDoc            rootDoc,
         Options            options,
-        List<File>         antlibFiles,
+        Collection<String> antlibResources,
+        Collection<File>   antlibFiles,
         Map<String, URL>   externalJavadocs,
         Theme              theme,
         @Nullable String[] sourcePath
@@ -135,6 +140,7 @@ class AntDoclet {
 
         this.rootDoc          = rootDoc;
         this.options          = options;
+        this.antlibResources  = antlibResources;
         this.antlibFiles      = antlibFiles;
         this.externalJavadocs = externalJavadocs;
         this.theme            = theme;
@@ -438,10 +444,11 @@ class AntDoclet {
         if ("-docencoding".equals(option)) return 2;
 
         // "Other" options:
-        if ("-antlib-file".equals(option)) return 2;
-        if ("-link".equals(option))        return 2;
-        if ("-linkoffline".equals(option)) return 3;
-        if ("-theme".equals(option))       return 2;
+        if ("-antlib-file".equals(option))     return 2;
+        if ("-antlib-resource".equals(option)) return 2;
+        if ("-link".equals(option))            return 2;
+        if ("-linkoffline".equals(option))     return 3;
+        if ("-theme".equals(option))           return 2;
 
         return 0;
     }
@@ -494,9 +501,10 @@ class AntDoclet {
      * </dl>
      */
     public static boolean
-    start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException {
+    start(final RootDoc rootDoc) throws IOException, ParserConfigurationException, SAXException, TransformerException {
 
         List<File>                                        antlibFiles      = new ArrayList<>();
+        List<String>                                      antlibResources  = new ArrayList<>();
         final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<>();
         Theme                                             theme            = Theme.JAVA8;
         String[]                                          sourcePath       = null;
@@ -544,6 +552,9 @@ class AntDoclet {
             // "Other" options.
             if ("-antlib-file".equals(option[0])) {
                 antlibFiles.add(new File(option[1]));
+            } else
+            if ("-antlib-resource".equals(option[0])) {
+                antlibResources.add(option[1]);
             } else
             if ("-link".equals(option[0])) {
 
@@ -602,7 +613,11 @@ class AntDoclet {
             }
         }
 
-        new AntDoclet(rootDoc, options, antlibFiles, externalJavadocs, theme, sourcePath).start2();
+        if (antlibResources.isEmpty() && antlibFiles.isEmpty()) {
+            rootDoc.printWarning("Neither \"-antlib-resource\" nor \"-antlib-file\" option given");
+        }
+
+        new AntDoclet(rootDoc, options, antlibResources, antlibFiles, externalJavadocs, theme, sourcePath).start2();
 
         return true;
     }
@@ -611,7 +626,7 @@ class AntDoclet {
      * Generates the ANT documentation for this configured object.
      */
     void
-    start2() throws IOException, ParserConfigurationException, SAXException {
+    start2() throws IOException, ParserConfigurationException, SAXException, TransformerException {
 
         switch (this.theme) {
 
@@ -661,14 +676,13 @@ class AntDoclet {
         );
         
         final LinkedHashMap<ClassDoc, AntTypeGroup> antTypeGroups = new LinkedHashMap<>();
-        AntTypeGroup                                antTypeGroupTasks, antTypeGroupOther;
-        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.Task"), (antTypeGroupTasks = new AntTypeGroup(
+        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.Task"), new AntTypeGroup(
             "tasks",
             "Task", // typeGroupName
             "Tasks",
             "Task \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
-        )));
+        ));
         antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.types.ResourceCollection"), new AntTypeGroup(
             "resourceCollections",
             "Resource collection", // typeGroupName
@@ -693,86 +707,22 @@ class AntDoclet {
                 "<code>&lt;{0}&gt;</code>"
             )
         );
-        antTypeGroups.put(null, (antTypeGroupOther = new AntTypeGroup(
+        antTypeGroups.put(null, new AntTypeGroup(
             "otherTypes",
             "Other type", // typeGroupName
             "Other types",
             "Type \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
-        )));
+        ));
+        
+        for (String antlibResource : this.antlibResources) {
+            try {
+                parseAntlibResource(antlibResource, this.sourcePath, this.rootDoc, antTypeGroups);
+            } catch (Longjump l) {}
+        }
 
-        {
-	        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-	        DocumentBuilder        documentBuilder        = documentBuilderFactory.newDocumentBuilder();
-	
-	        for (File antlibFile : this.antlibFiles) {
-	            Document document = documentBuilder.parse(antlibFile);
-	    
-	            document.getDocumentElement().normalize();
-	    
-	            // Now parse the contents of the given ANTLIB file; see
-	            // https://ant.apache.org/manual/Types/antlib.html
-	            for (Element taskdefElement : AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef"))) {
-	                AntType antType;
-	                try {
-	                    antType = AntDoclet.parseType(taskdefElement, this.rootDoc);
-	                } catch (Longjump l) {
-	                    continue;
-	                }
-	                antTypeGroupTasks.types.add(antType);
-	            }
-	            for (Element typedefElement : IterableUtil.concat(
-	                AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
-	                AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
-	            )) {
-	                AntType antType;
-	                try {
-	                    antType = AntDoclet.parseType(typedefElement, this.rootDoc);
-	                } catch (Longjump l) {
-	                    continue;
-	                }
-	    
-	                boolean hadOneTypeGroup = false;
-	                for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
-	    
-	                    AntTypeGroup atg = antTypeGroups.get(cd);
-	                    if (atg == null) {
-	    
-	                        Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  this.rootDoc);
-	                        if (typeGroupSubdirTag == null) continue;
-
-	                        // SUPPRESS CHECKSTYLE LineLength:5
-	                        String typeGroupSubdir  = typeGroupSubdirTag.text();
-	                        String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    this.rootDoc).text();
-	                        String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", this.rootDoc).text();
-	                        String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      this.rootDoc).text();
-	                        String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    this.rootDoc).text();
-	    
-	                        antTypeGroups.put(cd, (atg = new AntTypeGroup(
-	                            typeGroupSubdir,  // subdir
-	                            typeGroupName,    // name
-	                            typeGroupHeading, // heading
-	                            typeTitleMf,      // typeTitleMf
-	                            typeHeadingMf     // typeHeadingMf
-	                        )));
-	                    }
-	    
-	                    atg.types.add(antType);
-	                    hadOneTypeGroup = true;
-	                }
-	    
-	                if (!hadOneTypeGroup) antTypeGroupOther.types.add(antType);
-	            }
-	            if (document.getElementsByTagName("macrodef").getLength() > 0) {
-	                this.rootDoc.printWarning("<macrodef>s are not yet supported");
-	            }
-	            if (document.getElementsByTagName("presetdef").getLength() > 0) {
-	                this.rootDoc.printWarning("<presetdef>s are not yet supported");
-	            }
-	            if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-	                this.rootDoc.printWarning("<scriptdef>s are not yet supported");
-	            }
-            }
+        for (File antlibFile : this.antlibFiles) {
+            parseAntlibFile(antlibFile, this.sourcePath, this.rootDoc, antTypeGroups);
         }
 
         // Now render the type documentation pages, e.g. "tasks/myTask.html"
@@ -885,6 +835,216 @@ class AntDoclet {
             true,
             this.options.documentCharset
         );
+    }
+    
+    /**
+     * Parses the {@code <taskdef>}s, {@code <typedef>}s and {@code <componentdef>}s from the
+     * <var>antlibResource</var>, which is looked up along the <var>sourcePath</var>.
+     * 
+     * <p>
+     *   The <var>antlibResource</var> may contain references to nested ANTLIB files and resources.
+     * </p>
+     * 
+     * @param result Parsed ANT types are added to this map
+     */
+    private static void
+    parseAntlibResource(
+        String                            antlibResource,
+        @Nullable String[]                sourcePath,
+        RootDoc                           rootDoc,
+        final Map<ClassDoc, AntTypeGroup> result
+    ) throws ParserConfigurationException, SAXException, IOException, TransformerException, Longjump {
+
+        if (sourcePath == null) sourcePath = new String[] { "." };
+
+        for (String spe : sourcePath) {
+            try {
+                parseAntlibFile(new File(new File(spe), antlibResource), sourcePath, rootDoc, result);
+                return;
+            } catch (FileNotFoundException fnfe) {
+                ;
+            }
+        }
+
+        rootDoc.printError(
+            "Antlib resource \""
+            + antlibResource
+            + "\" not found on the source path ("
+            + Arrays.toString(sourcePath)
+            + ")"
+        );
+        throw new Longjump();
+    }
+
+    /**
+     * Parses the {@code <taskdef>}s, {@code <typedef>}s and {@code <componentdef>}s from the <var>antlibFile</var>.
+     * <p>
+     *   The <var>antlibFile</var> may contain references to nested ANTLIB files and resources.
+     * </p>
+     * 
+     * @param result Parsed ANT types are added to this map
+     */
+    private static void
+    parseAntlibFile(
+        File                              antlibFile,
+        @Nullable String[]                sourcePath,
+        RootDoc                           rootDoc,
+        final Map<ClassDoc, AntTypeGroup> result
+    ) throws ParserConfigurationException, SAXException, IOException, TransformerException {
+        
+        Document document = XmlUtil.parse(DocumentBuilderFactory.newInstance().newDocumentBuilder(), antlibFile, null);
+        document.getDocumentElement().normalize();
+   
+        // Now parse the contents of the given ANTLIB file; see
+        // https://ant.apache.org/manual/Types/antlib.html
+        for (Element typedefElement : IterableUtil.concat(
+            AntDoclet.<Element>nl2i(document.getElementsByTagName("taskdef")),
+            AntDoclet.<Element>nl2i(document.getElementsByTagName("typedef")),
+            AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
+        )) {
+            try {
+                AntDoclet.parseTypedef(typedefElement, sourcePath, rootDoc, result);
+            } catch (Longjump l) {
+                continue;
+            }
+        }
+        
+        if (document.getElementsByTagName("macrodef").getLength() > 0) {
+            rootDoc.printWarning("<macrodef>s are not yet supported");
+        }
+        if (document.getElementsByTagName("presetdef").getLength() > 0) {
+            rootDoc.printWarning("<presetdef>s are not yet supported");
+        }
+        if (document.getElementsByTagName("scriptdef").getLength() > 0) {
+            rootDoc.printWarning("<scriptdef>s are not yet supported");
+        }
+    }
+
+    /**
+     * Parses an element in an ANTLIB file (typically a {@code <taskdef>}, {@code <typedef>} or {@code <componentdef>}
+     * element) and adds the resulting ANT type(s) to <var>result</var>.
+     * <p>
+     *   The <var>antlibFile</var> may contain references to nested ANTLIB files, which are looked up along the
+     *   <var>sourcePath</var>.
+     * </p>
+     */
+    private static void
+    parseTypedef(
+        Element                     typedefElement,
+        @Nullable String[]          sourcePath,
+        RootDoc                     rootDoc,
+        Map<ClassDoc, AntTypeGroup> result
+    ) throws Longjump, ParserConfigurationException, SAXException, IOException, TransformerException {
+
+        final String nameAttribute      = getOptionalAttribute(typedefElement, "name");
+        final String classnameAttribute = getOptionalAttribute(typedefElement, "classname");
+        final String adaptToAttribute   = getOptionalAttribute(typedefElement, "adaptTo");
+        final String resourceAttribute  = getOptionalAttribute(typedefElement, "resource");
+        final String fileAttribute      = getOptionalAttribute(typedefElement, "file");
+        
+        if (
+            nameAttribute         == null
+            && classnameAttribute == null
+            && adaptToAttribute   == null
+            && resourceAttribute  != null
+            && fileAttribute      == null
+        ) {
+
+            // <typedef resource="path/to/antlib.xml" />
+            parseAntlibResource(resourceAttribute, sourcePath, rootDoc, result);
+        } else
+        if (
+            nameAttribute         == null
+            && classnameAttribute == null
+            && adaptToAttribute   == null
+            && resourceAttribute  == null
+            && fileAttribute      != null
+        ) {
+
+            // <typedef file="path/to/antlib.xml" />
+            parseAntlibFile(new File(fileAttribute), sourcePath, rootDoc, result);
+        } else
+        if (
+            nameAttribute         != null
+            && classnameAttribute != null
+            && resourceAttribute  == null
+            && fileAttribute      == null
+        ) {
+
+            // <typedef name="echo" classname="com.acme.ant.EchoTask" />
+            final ClassDoc classDoc = rootDoc.classNamed(classnameAttribute);
+            if (classDoc == null) {
+                rootDoc.printError("Class '" + classnameAttribute + "' not found for  <" + nameAttribute + ">");
+                throw new Longjump();
+            }
+            
+            final ClassDoc adaptTo;
+            if (adaptToAttribute == null) {
+                adaptTo = null;
+            } else {
+                adaptTo = rootDoc.classNamed(adaptToAttribute);
+                if (adaptTo == null) {
+                    rootDoc.printError("Class '" + adaptToAttribute + "' not found for <" + nameAttribute + ">");
+                    throw new Longjump();
+                }
+            }
+
+            // Deduce attributes and subelements from the special methods that ANT uses.
+            AntType antType = new AntType(
+                nameAttribute,
+                classDoc,
+                adaptTo,
+                AntDoclet.characterDataOf(classDoc),
+                AntDoclet.attributesOf(classDoc, rootDoc),
+                AntDoclet.subelementsOf(classDoc, rootDoc)
+            );
+      
+            if (typedefElement.getTagName().equals("taskdef")) {
+                result.get(rootDoc.classNamed("org.apache.tools.ant.Task")).types.add(antType);
+            } else {
+        
+                boolean hadOneTypeGroup = false;
+                for (ClassDoc cd : Docs.withSuperclassesAndInterfaces(antType.classDoc)) {
+        
+                    AntTypeGroup atg = result.get(cd);
+                    if (atg == null) {
+        
+                        Tag typeGroupSubdirTag = Tags.optionalTag(cd, "@ant.typeGroupSubdir",  rootDoc);
+                        if (typeGroupSubdirTag == null) continue;
+        
+                        // SUPPRESS CHECKSTYLE LineLength:5
+                        String typeGroupSubdir  = typeGroupSubdirTag.text();
+                        String typeGroupName    = Tags.requiredTag(cd, "@ant.typeGroupName",    rootDoc).text();
+                        String typeGroupHeading = Tags.requiredTag(cd, "@ant.typeGroupHeading", rootDoc).text();
+                        String typeTitleMf      = Tags.requiredTag(cd, "@ant.typeTitleMf",      rootDoc).text();
+                        String typeHeadingMf    = Tags.requiredTag(cd, "@ant.typeHeadingMf",    rootDoc).text();
+        
+                        result.put(cd, (atg = new AntTypeGroup(
+                            typeGroupSubdir,  // subdir
+                            typeGroupName,    // name
+                            typeGroupHeading, // heading
+                            typeTitleMf,      // typeTitleMf
+                            typeHeadingMf     // typeHeadingMf
+                        )));
+                    }
+        
+                    atg.types.add(antType);
+                    hadOneTypeGroup = true;
+                }
+        
+                if (!hadOneTypeGroup) result.get(null).types.add(antType);
+            }
+        } else
+        {
+            rootDoc.printError("Invalid combination of attributes");
+            throw new Longjump();
+        }
+    }
+
+    @Nullable private static String
+    getOptionalAttribute(Element element, String attributeName) {
+        String result = element.getAttribute(attributeName);
+        return result.length() == 0 ? null : result;
     }
 
     private LinkMaker
@@ -1076,58 +1236,6 @@ class AntDoclet {
                 return new Link(null, to.name());
             }
         };
-    }
-
-    private static AntType
-    parseType(Element taskdefElement, RootDoc rootDoc) throws Longjump {
-
-        final String taskName;
-        {
-            taskName = taskdefElement.getAttribute("name");
-            if (taskName == null) {
-                rootDoc.printError("<taskdef> lacks the name");
-                throw new Longjump();
-            }
-        }
-
-        final ClassDoc classDoc;
-        {
-            String classnameAttribute = taskdefElement.getAttribute("classname");
-            if (classnameAttribute.length() == 0) {
-                rootDoc.printError("<taskdef> lacks the class name");
-                throw new Longjump();
-            }
-            classDoc = rootDoc.classNamed(classnameAttribute);
-            if (classDoc == null) {
-                rootDoc.printError("Class '" + classnameAttribute + "' not found for  <" + taskName + ">");
-                throw new Longjump();
-            }
-        }
-
-        final ClassDoc adaptTo;
-        ADAPT_TO: {
-            String adaptToAttribute = taskdefElement.getAttribute("adaptTo");
-            if (adaptToAttribute.length() == 0) {
-                adaptTo = null;
-                break ADAPT_TO;
-            }
-
-            adaptTo = rootDoc.classNamed(adaptToAttribute);
-            if (adaptTo == null) {
-                rootDoc.printError("Class '" + adaptToAttribute + "' not found for <" + taskName + ">");
-                throw new Longjump();
-            }
-        }
-
-        // Deduce attributes and subelements from the special methods that ANT uses.
-        return new AntType(
-            taskName,
-            classDoc,
-            adaptTo,
-            AntDoclet.characterDataOf(classDoc),
-            AntDoclet.attributesOf(classDoc, rootDoc),
-            AntDoclet.subelementsOf(classDoc, rootDoc)
-        );
     }
 
     /**@return The given <var>nodeList</var>, wrapped as an {@link Iterable} */
