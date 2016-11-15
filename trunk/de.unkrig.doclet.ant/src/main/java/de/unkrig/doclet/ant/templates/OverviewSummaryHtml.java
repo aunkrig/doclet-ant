@@ -117,7 +117,7 @@ class OverviewSummaryHtml extends AbstractSummaryHtml {
             new Runnable[] {                        // renderHeaders
                 () -> {
                     OverviewSummaryHtml.this.l(
-"      <h1>ANT Library Overview</h1>"
+"      <h1>" + (options.docTitle != null ? options.docTitle : "ANT Library Overview") + "</h1>"
                     );
                 },
                 overviewFirstSentenceHtml.isEmpty() ? null : () -> {
