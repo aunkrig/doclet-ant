@@ -12,16 +12,16 @@
  *       following disclaimer.
  *    2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
  *       following disclaimer in the documentation and/or other materials provided with the distribution.
- *    3. The name of the author may not be used to endorse or promote products derived from this software without
- *       specific prior written permission.
+ *    3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote
+ *       products derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
- * THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 package de.unkrig.doclet.ant.templates;
@@ -81,7 +81,7 @@ class TypeHtml extends AbstractDetailHtml {
     ) {
         AntType antType = atwc.current();
 
-        List<Section> sections = new ArrayList<AbstractDetailHtml.Section>();
+        List<Section> sections = new ArrayList<>();
 
         MethodDoc characterData = antType.characterData;
         if (characterData != null) {
@@ -119,13 +119,13 @@ class TypeHtml extends AbstractDetailHtml {
             List<AntAttribute> attributes = antType.attributes;
             if (attributes.isEmpty()) break ATTRIBUTES;
 
-            List<SectionItem> attributeSectionItems = new ArrayList<AbstractDetailHtml.SectionItem>();
+            List<SectionItem> attributeSectionItems = new ArrayList<>();
 
             {
                 Map<AntAttribute, Collection<AntAttribute>>
-                seeSources = new HashMap<AntDoclet.AntAttribute, Collection<AntAttribute>>();
+                seeSources = new HashMap<>();
                 Map<AntAttribute, AntAttribute>
-                seeTargets = new HashMap<AntAttribute, AntAttribute>();
+                seeTargets = new HashMap<>();
 
                 for (AntAttribute a : attributes) {
 
@@ -135,7 +135,7 @@ class TypeHtml extends AbstractDetailHtml {
 
                         Collection<AntAttribute> sources = seeSources.get(seeTarget);
                         if (sources == null) {
-                            seeSources.put(seeTarget, (sources = new ArrayList<AntAttribute>()));
+                            seeSources.put(seeTarget, (sources = new ArrayList<>()));
                         }
                         sources.add(a);
 
@@ -202,7 +202,7 @@ class TypeHtml extends AbstractDetailHtml {
             List<AntSubelement> subelements = antType.subelements;
             if (subelements.isEmpty()) break SUBELEMENTS;
 
-            List<SectionItem> subelementSectionItems = new ArrayList<SectionItem>();
+            List<SectionItem> subelementSectionItems = new ArrayList<>();
 
             for (AntSubelement subelement : subelements) {
 
@@ -375,7 +375,7 @@ class TypeHtml extends AbstractDetailHtml {
     printSubelements(Doc from, List<AntSubelement> subelements, Html html, RootDoc rootDoc, Set<ClassDoc> seenTypes) {
 
         Map<String, List<AntSubelement>>
-        subelementsByGroup = new LinkedHashMap<String, List<AntSubelement>>();
+        subelementsByGroup = new LinkedHashMap<>();
 
         for (AntSubelement subelement : subelements) {
 
@@ -383,7 +383,7 @@ class TypeHtml extends AbstractDetailHtml {
             List<AntSubelement> subelementsOfGroup = subelementsByGroup.get(group);
 
             if (subelementsOfGroup == null) {
-                subelementsOfGroup = new ArrayList<AntSubelement>();
+                subelementsOfGroup = new ArrayList<>();
                 subelementsByGroup.put(group, subelementsOfGroup);
             }
 
@@ -621,10 +621,10 @@ class TypeHtml extends AbstractDetailHtml {
                     rhs = "???";
                 }
             } catch (Exception | NoClassDefFoundError e) {
-                
+
                 Throwable t = e;
                 for (Throwable t2 = t.getCause(); t2 != null; t2 = (t = t2).getCause());
-                
+
                 rootDoc.printError(
                     attribute.methodDoc.position(),
                     (
@@ -832,7 +832,7 @@ class TypeHtml extends AbstractDetailHtml {
     printAttributes(List<AntAttribute> attributes, Html html, RootDoc rootDoc) {
 
         Map<String, List<AntAttribute>>
-        attributesByGroup = new LinkedHashMap<String, List<AntAttribute>>();
+        attributesByGroup = new LinkedHashMap<>();
 
         for (AntAttribute attribute : attributes) {
 
@@ -840,7 +840,7 @@ class TypeHtml extends AbstractDetailHtml {
             List<AntAttribute> attributesOfGroup = attributesByGroup.get(group);
 
             if (attributesOfGroup == null) {
-                attributesOfGroup = new ArrayList<AntAttribute>();
+                attributesOfGroup = new ArrayList<>();
                 attributesByGroup.put(group, attributesOfGroup);
             }
             attributesOfGroup.add(attribute);
@@ -878,9 +878,9 @@ class TypeHtml extends AbstractDetailHtml {
     printAttributes2(List<AntAttribute> attributes, Html html, RootDoc rootDoc) {
 
         Map<AntAttribute, Collection<AntAttribute>>
-        seeSources = new HashMap<AntDoclet.AntAttribute, Collection<AntAttribute>>();
+        seeSources = new HashMap<>();
         Map<AntAttribute, AntAttribute>
-        seeTargets = new HashMap<AntAttribute, AntAttribute>();
+        seeTargets = new HashMap<>();
 
         for (AntAttribute a : attributes) {
 
@@ -890,7 +890,7 @@ class TypeHtml extends AbstractDetailHtml {
 
                 Collection<AntAttribute> sources = seeSources.get(seeTarget);
                 if (sources == null) {
-                    seeSources.put(seeTarget, (sources = new ArrayList<AntAttribute>()));
+                    seeSources.put(seeTarget, (sources = new ArrayList<>()));
                 }
                 sources.add(a);
 
