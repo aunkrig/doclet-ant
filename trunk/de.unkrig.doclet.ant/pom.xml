@@ -1,244 +1,241 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project
-  xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
 >
-  <modelVersion>4.0.0</modelVersion>
+	<modelVersion>4.0.0</modelVersion>
 
-  <groupId>de.unkrig</groupId>
-  <artifactId>doclet-ant</artifactId>
-  <version>1.0.5-SNAPSHOT</version>
+	<groupId>de.unkrig</groupId>
+	<artifactId>doclet-ant</artifactId>
+	<version>1.0.5</version>
 
-  <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+	<properties>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
 
-  <dependencies>
-    <dependency>
-      <groupId>de.unkrig</groupId>
-      <artifactId>no-template-core</artifactId>
-      <version>1.0.3-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>com.sun</groupId>
-      <artifactId>tools</artifactId>
-      <version>1.8.0</version>
-      <scope>system</scope>
-      <systemPath>${java.home}/../lib/tools.jar</systemPath>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-    	<groupId>de.unkrig.commons</groupId>
-    	<artifactId>commons-doclet</artifactId>
-    	<version>1.2.4-SNAPSHOT</version>
-    </dependency>
-  </dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>de.unkrig</groupId>
+			<artifactId>no-template-core</artifactId>
+			<version>1.0.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun</groupId>
+			<artifactId>tools</artifactId>
+			<version>1.8.0</version>
+			<scope>system</scope>
+			<systemPath>${java.home}/../lib/tools.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>de.unkrig.commons</groupId>
+			<artifactId>commons-doclet</artifactId>
+			<version>1.2.4</version>
+		</dependency>
+	</dependencies>
 
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
+	<distributionManagement>
+		<snapshotRepository>
+			<id>ossrh</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+		</snapshotRepository>
+	</distributionManagement>
 
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.6</version>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-        </configuration>
-        <executions>
-          <execution>
-            <id>make-assembly</id> <!-- this is used for inheritance merges -->
-            <phase>package</phase> <!-- bind to the packaging phase -->
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.6</version>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id> <!-- this is used for inheritance merges -->
+						<phase>package</phase> <!-- bind to the packaging phase -->
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>2.4</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>2.4</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 
-      <plugin>
-        <groupId>org.sonatype.plugins</groupId>
-        <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.7</version>
-        <extensions>true</extensions>
-        <configuration>
-           <serverId>ossrh</serverId>
-           <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-           <autoReleaseAfterClose>false</autoReleaseAfterClose>
-        </configuration>
-      </plugin>
+			<plugin>
+				<groupId>org.sonatype.plugins</groupId>
+				<artifactId>nexus-staging-maven-plugin</artifactId>
+				<version>1.6.7</version>
+				<extensions>true</extensions>
+				<configuration>
+					 <serverId>ossrh</serverId>
+					 <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+					 <autoReleaseAfterClose>false</autoReleaseAfterClose>
+				</configuration>
+			</plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.10.4</version>
-        <executions>
-          <execution>
-            <id>attach-javadocs</id>
-            <goals>
-              <goal>jar</goal>
-            </goals>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.10.4</version>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
 
-            <configuration>
-              <additionalparam>-Xdoclint:none</additionalparam>
-              <quiet>true</quiet>
-              <encoding>UTF-8</encoding>
-            </configuration>
-          </execution>
+						<configuration>
+							<additionalparam>-Xdoclint:none</additionalparam>
+							<quiet>true</quiet>
+							<encoding>UTF-8</encoding>
+						</configuration>
+					</execution>
 
-          <execution>
-            <id>make-maindoc</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>javadoc</goal>
-            </goals>
+					<execution>
+						<id>make-maindoc</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>javadoc</goal>
+						</goals>
 
-            <configuration>
-              <useStandardDocletOptions>false</useStandardDocletOptions>
+						<configuration>
+							<useStandardDocletOptions>false</useStandardDocletOptions>
 
-              <!-- The MAIN doclet requires JAVADOC 8. -->
-              <javadocExecutable>${jdk.8.home}/bin/javadoc.exe</javadocExecutable>
+							<quiet>true</quiet>
+							<encoding>UTF-8</encoding>
 
-              <quiet>true</quiet>
-              <encoding>UTF-8</encoding>
+							<doclet>de.unkrig.doclet.main.MainDoclet</doclet>
+							<docletArtifact>
+								<groupId>de.unkrig</groupId>
+								<artifactId>doclet-main</artifactId>
+								<version>1.0.2</version>
+							</docletArtifact>
 
-              <doclet>de.unkrig.doclet.main.MainDoclet</doclet>
-              <docletArtifact>
-                <groupId>de.unkrig</groupId>
-                <artifactId>doclet-main</artifactId>
-                <version>1.0.0</version>
-              </docletArtifact>
+							<additionalparam>
+								-charset     UTF-8
+								-docencoding UTF-8
+								-method      start(RootDoc)
+							</additionalparam>
 
-              <additionalparam>
-                -charset UTF-8
-                -docencoding UTF-8
-                -method start(RootDoc)
-              </additionalparam>
+							<destDir>../../classes</destDir>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 
-              <destDir>../../classes</destDir>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.5.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>de.unkrig</groupId>
+						<artifactId>html2txt</artifactId>
+						<version>1.0.0</version>
+					</dependency>
+				</dependencies>
+				
+				<executions>
+					<execution>
+						<id>html2txt-maindoc</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<includePluginDependencies>true</includePluginDependencies>
+							<mainClass>de.unkrig.html2txt.Main</mainClass>
+							<arguments>
+								<argument>target/classes/de/unkrig/doclet/ant/AntDoclet.start(RootDoc).html</argument>
+								<argument>target/classes/de/unkrig/doclet/ant/AntDoclet.start(RootDoc).txt</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
-        <dependencies>
-          <dependency>
-            <groupId>de.unkrig</groupId>
-            <artifactId>html2txt</artifactId>
-            <version>1.0.0</version>
-          </dependency>
-        </dependencies>
-        
-        <executions>
-          <execution>
-            <id>html2txt-maindoc</id>
-            <phase>compile</phase>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <includePluginDependencies>true</includePluginDependencies>
-              <mainClass>de.unkrig.html2txt.Main</mainClass>
-              <arguments>
-                <argument>target/classes/de/unkrig/doclet/ant/AntDoclet.start(RootDoc).html</argument>
-                <argument>target/classes/de/unkrig/doclet/ant/AntDoclet.start(RootDoc).txt</argument>
-              </arguments>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
+	<profiles>
 
-  <profiles>
+		<!-- Signs all artifacts with GPG (oss.sonatype.org requires that). -->
+		<profile>
+			<id>have_gpg</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.5</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
-    <!-- Signs all artifacts with GPG (oss.sonatype.org requires that). -->
-    <profile>
-      <id>have_gpg</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.5</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
+	<name>The ANT doclet</name>
 
-  <name>The ANT doclet</name>
+	<description>
+		Generates (JAVADOC-like) HTML documentation for APACHE ANT antlibs.
+	</description>
+	<organization>
+		<name>Arno Unkrig</name>
+		<url>http://unkrig.de/w/ANT_doclet</url>
+	</organization>
 
-  <description>
-    Generates (JAVADOC-like) HTML documentation for APACHE ANT antlibs.
-  </description>
-  <organization>
-    <name>Arno Unkrig</name>
-    <url>http://unkrig.de/w/ANT_doclet</url>
-  </organization>
+	<scm>
+		<url>https://svn.code.sf.net/p/loggifier/code/trunk/de.unkrig.doclet.ant</url>
+	</scm>
 
-  <scm>
-  	<url>https://svn.code.sf.net/p/loggifier/code/trunk/de.unkrig.doclet.ant</url>
-  </scm>
+	<licenses>
+		<license>
+			<name>New BSD License</name>
+			<url>http://unkrig.de/w/ANT_doclet#License</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
 
-  <licenses>
-    <license>
-      <name>New BSD License</name>
-      <url>http://unkrig.de/w/ANT_doclet#License</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-
-  <developers>
-    <developer>
-      <id>aunkrig</id>
-      <name>Arno Unkrig</name>
-      <roles>
-        <role>Developer</role>
-        <role>Release Manager</role>
-      </roles>
-    </developer>
-  </developers>
-  <url>http://unkrig.de/w/ANT_doclet</url>
+	<developers>
+		<developer>
+			<id>aunkrig</id>
+			<name>Arno Unkrig</name>
+			<roles>
+				<role>Developer</role>
+				<role>Release Manager</role>
+			</roles>
+		</developer>
+	</developers>
+	<url>http://unkrig.de/w/ANT_doclet</url>
 </project>
