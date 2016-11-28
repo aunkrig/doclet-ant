@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.MessageFormat;
@@ -82,6 +83,9 @@ import de.unkrig.commons.lang.protocol.Mappings;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.Notations;
 import de.unkrig.commons.text.xml.XmlUtil;
+import de.unkrig.commons.util.CommandLineOptions;
+import de.unkrig.commons.util.annotation.CommandLineOption;
+import de.unkrig.commons.util.annotation.CommandLineOptionGroup;
 import de.unkrig.commons.util.collections.IterableUtil;
 import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.templates.AllDefinitionsHtml;
@@ -100,9 +104,11 @@ import de.unkrig.notemplate.javadocish.Options;
 public
 class AntDoclet {
 
-    private static final String DEFAULTS_PROPERTIES_RESOURCE_NAME = "org/apache/tools/ant/taskdefs/defaults.properties";
-
     static { AssertionUtil.enableAssertionsForThisClass(); }
+
+    // ======================= CONSTANTS =======================
+
+    private static final String DEFAULTS_PROPERTIES_RESOURCE_NAME = "org/apache/tools/ant/taskdefs/defaults.properties";
 
     private static final Pattern ADD_TEXT_METHOD_NAME          = Pattern.compile("addText");
     private static final Pattern SET_ATTRIBUTE_METHOD_NAME     = Pattern.compile("set(?<attributeName>[A-Z]\\w*)");
@@ -110,43 +116,21 @@ class AntDoclet {
     private static final Pattern ADD_SUBELEMENT_METHOD_NAME    = Pattern.compile("add(?:Configured)?(?<subelementName>[A-Z]\\w*)"); // SUPPRESS CHECKSTYLE LineLength
     private static final Pattern CREATE_SUBELEMENT_METHOD_NAME = Pattern.compile("create(?<subelementName>[A-Z]\\w*)");
 
+    // ======================= CONFIGURATION FIELDS =======================
+
     private enum Theme { JAVA7, JAVA8 }
 
-    private RootDoc                                rootDoc;
-    private final Options                          options;
-    private final Collection<String>               antlibResources;
-    private final Collection<File>                 antlibFiles;
-    private final Map<String /*packageName*/, URL> externalJavadocs;
-    private final Theme                            theme;
-    private final File[]                           sourcePath;
-    private final File[]                           classPath;
+    private static RootDoc                                rootDoc = ObjectUtil.almostNull();
+    private static final Options                          options = new Options();
+    private static final Collection<String>               antlibResources = new ArrayList<>();
+    private static final Collection<File>                 antlibFiles = new ArrayList<>();
+    private static final Map<String /*packageName*/, URL> externalJavadocs = new HashMap<>();
+    private static Theme                                  theme = Theme.JAVA8;
+    private static File[]                                 sourcePath = { new File(".") };
+    private static File[]                                 classPath = new File[0];
 
-    /**
-     * Documentation URLs for well-known ANT tasks and types.
-     */
-    private final Mapping<ClassDoc, Link> externalAntdocs;
-
-    public
-    AntDoclet(
-        RootDoc            rootDoc,
-        Options            options,
-        Collection<String> antlibResources,
-        Collection<File>   antlibFiles,
-        Map<String, URL>   externalJavadocs,
-        Theme              theme,
-        File[]             sourcePath,
-        File[]             classPath
-    ) throws IOException {
-
-        this.rootDoc          = rootDoc;
-        this.options          = options;
-        this.antlibResources  = antlibResources;
-        this.antlibFiles      = antlibFiles;
-        this.externalJavadocs = externalJavadocs;
-        this.theme            = theme;
-        this.sourcePath       = sourcePath;
-        this.classPath        = classPath;
-
+    private static Mapping<ClassDoc, Link> externalAntdocs = ObjectUtil.almostNull();
+    static {
         Map<ClassDoc, Link> m = new HashMap<>();
 
         // Resource "de/unkrig/doclet/ant/AntDoclet/external-antdocs.properties" provides a number of
@@ -154,8 +138,8 @@ class AntDoclet {
         {
             Properties properties;
             try {
-                properties = this.loadPropertiesFromResource((
-                    this.getClass().getPackage().getName().replace('.', '/')
+                properties = AntDoclet.loadPropertiesFromResource((
+                    AntDoclet.class.getPackage().getName().replace('.', '/')
                     + "/external-antdocs.properties"
                 ));
             } catch (IOException ioe) {
@@ -185,13 +169,13 @@ class AntDoclet {
             Properties properties;
             {
                 try {
-                    properties = this.loadPropertiesFromResource(AntDoclet.DEFAULTS_PROPERTIES_RESOURCE_NAME);
+                    properties = AntDoclet.loadPropertiesFromResource(AntDoclet.DEFAULTS_PROPERTIES_RESOURCE_NAME);
                 } catch (IOException ioe) {
                     throw ExceptionUtil.wrap((
                         "Could not open resource \""
                         + AntDoclet.DEFAULTS_PROPERTIES_RESOURCE_NAME
                         + "\"; make sure that \"ant.jar\" is on the doclet's classpath"
-                    ), ioe);
+                    ), ioe, ExceptionInInitializerError.class);
                 }
             }
 
@@ -219,9 +203,13 @@ class AntDoclet {
         {
             Properties properties;
             try {
-                properties = this.loadPropertiesFromResource("org/apache/tools/ant/types/defaults.properties");
+                properties = AntDoclet.loadPropertiesFromResource("org/apache/tools/ant/types/defaults.properties");
             } catch (IOException ioe) {
-                throw ExceptionUtil.wrap("Make sure that \"ant.jar\" is on the doclet's classpath", ioe);
+                throw ExceptionUtil.wrap(
+                    "Make sure that \"ant.jar\" is on the doclet's classpath",
+                    ioe,
+                    ExceptionInInitializerError.class
+                );
             }
 
             for (Entry<Object, Object> e : properties.entrySet()) {
@@ -244,13 +232,195 @@ class AntDoclet {
             }
         }
 
-        this.externalAntdocs = Mappings.fromMap(m);
+        AntDoclet.externalAntdocs = Mappings.fromMap(m);
     }
 
-    private Properties
+    // ======================= CONFIGURATION SETTERS =======================
+
+    /**
+     * Where to create documentation in HTML format (optional).
+     * <p>
+     *   The effective file name is:
+     * </p>
+     * <p>
+     *   {@code <dest-dir>/<ant-type-group>/<ant-type>.html}
+     * </p>
+     * <p>
+     *   The default destination directory is "{@code .}".
+     * </p>
+     */
+    @CommandLineOption(name = "-d") public static void
+    setDestination(File directory) { options.destination = directory; }
+
+    /**
+     * Splits the index file into multiple files, alphabetically, one file per letter, plus a file for any index
+     * entries that start with non-alphabetical characters.
+     */
+    @CommandLineOption(name = "-splitindex") public static void
+    setSplitIndex() { options.splitIndex = true; }
+
+    /**
+     * The charset to use when writing the HTML files. The default is the JVM default charset, "${file.encoding}".
+     */
+    @CommandLineOption(name = "-docencoding") public static void
+    setDocEncoding(Charset charset) { options.documentCharset = charset; }
+
+    /**
+     * The HTML character set for this document.
+     */
+    @CommandLineOption(name = "-charset") public static void
+    setCharset(String name) { options.htmlCharset = name; }
+
+    /**
+     * The title to place near the top of the overview summary file. The text specified in the title tag is placed as
+     * a centered, level-one heading directly beneath the top navigation bar. The title tag can contain HTML tags and
+     * white space.
+     */
+    @CommandLineOption(name = "-doctitle") public static void
+    setDocTitle(String htmlText) { options.docTitle = htmlText; }
+
+    /**
+     * The header text to be placed at the top of each output file. The header is placed to the right of the upper
+     * navigation bar. The header can contain HTML tags and white space.
+     */
+    @CommandLineOption(name = "-header") public static void
+    setHeader(String text) { options.header = text; }
+
+    /**
+     * The footer text to be placed at the bottom of each output file. The footer value is placed to the right of the
+     * lower navigation bar. The footer value can contain HTML tags and white space.
+     */
+    @CommandLineOption(name = "-footer") public static void
+    setFooter(String text) { options.footer = text; }
+
+    /**
+     * The text to be placed at the top of each output file.
+     */
+    @CommandLineOption(name = "-top") public static void
+    setTop(String text) { options.top = text; }
+
+    /**
+     * The text to be placed at the bottom of each output file. The text is placed at the bottom of the page,
+     * underneath the lower navigation bar. The text can contain HTML tags and white space.
+     */
+    @CommandLineOption(name = "-bottom") public static void
+    setBottom(String text) { options.bottom = text; }
+
+    /**
+     * Suppress normal output.
+     */
+    @CommandLineOption(name = "-quiet") public static void
+    setQuiet() { options.quiet = true; }
+
+    /**
+     * Suppresses the time stamp, which is hidden in an HTML comment in the generated HTML near the top of each page.
+     * This is useful when you want to run the javadoc command on two source bases and get the differences between diff
+     * them, because it prevents time stamps from causing a diff (which would otherwise be a diff on every page).
+     * The time stamp includes the javadoc command release number.
+     */
+    @CommandLineOption(name = "-notimestamp") public static void
+    setNoTimestamp() { options.noTimestamp = true; }
+
+    @CommandLineOptionGroup(cardinality = CommandLineOptionGroup.Cardinality.ONE_OR_MORE)
+    interface AntlibGroup {}
+
+    /**
+     * The ANTLIB file to parse, see <a href="https://ant.apache.org/manual/Types/antlib.html">the documentation of
+     * the ANTLIB concept</a>.
+     */
+    @CommandLineOption(name = "-antlib-file", group = AntlibGroup.class) public static void
+    addAntlibFile(File file) { antlibFiles.add(file); }
+
+    /**
+     * The name of an ANTLIB resource to parse, see <a href="https://ant.apache.org/manual/Types/antlib.html">the
+     * documentation of the ANTLIB concept</a>.
+     */
+    @CommandLineOption(name = "-antlib-resource", group = AntlibGroup.class) public static void
+    addAntlibResource(String name) { antlibResources.add(name); }
+
+    /**
+     * See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">the JAVADOC
+     * tool documentation for the "-link" command line option</a>.
+     */
+    @CommandLineOption(name = "-link") public static void
+    addLink(String externalDocumentationUrl) throws IOException {
+
+        if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
+
+        URL externalDocumentationUrl2 = new URL(
+            new URL("file", null, -1, options.destination.toString()),
+            externalDocumentationUrl
+        );
+
+        Docs.readExternalJavadocs(
+            externalDocumentationUrl2, // targetUrl
+            externalDocumentationUrl2, // packageListUrl
+            externalJavadocs,          // externalJavadocs
+            AntDoclet.rootDoc
+        );
+    }
+
+    /**
+     * See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDFIIJH">the JAVADOC
+     * tool documentation for the "-linkofflin" command line option</a>.
+     */
+    @CommandLineOption(name = "-linkoffline") public static void
+    addLinkOffline(String externalDocumentationUrl, String packageListLocation) throws IOException {
+
+        if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
+        if (!packageListLocation.endsWith("/"))      packageListLocation      += "/";
+
+        URL externalDocumentationUrl2 = new URL(
+            new URL("file", null, -1, options.destination.toString()),
+            externalDocumentationUrl
+        );
+
+        URL packageListUrl = (
+            packageListLocation.startsWith("http:") || packageListLocation.startsWith("file:")
+            ? new URL(new URL("file", null, -1, System.getProperty("user.dir")), packageListLocation)
+            : new URL("file", null, new File(packageListLocation).getAbsolutePath() + '/')
+        );
+        Docs.readExternalJavadocs(
+            externalDocumentationUrl2, // targetUrl
+            packageListUrl,            // packageListUrl
+            externalJavadocs,          // externalJavadocs
+            AntDoclet.rootDoc
+        );
+    }
+
+    /**
+     * Which style sheets and resources to use.
+     *
+     * @param theme JAVA7|JAVA8
+     */
+    @CommandLineOption(name = "-theme") public static void
+    setTheme(Theme theme) { AntDoclet.theme = theme; }
+
+    /**
+     * Takes also effect for loading ANTLIB resources.
+     */
+    @CommandLineOption(name = "-sourcepath") public static void
+    setSourcePath(String sourcePath) { AntDoclet.sourcePath = parsePath(sourcePath); }
+
+    /**
+     * Takes also effect for loading ANTLIB resources.
+     */
+    @CommandLineOption(name = "-classpath") public static void
+    setClassPath(String classPath) { AntDoclet.classPath = parsePath(classPath); }
+
+    /**
+     * See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">the JAVADOC
+     * tool documentation for the "-windowtitle" command line option</a>.
+     */
+    @CommandLineOption(name = "-windowtitle") public static void
+    setWindowTitle(String text) { options.windowTitle = text; }
+
+    // ======================= END CONFIGURATION SETTERS =======================
+
+    private static Properties
     loadPropertiesFromResource(String resourceName) throws IOException {
 
-        InputStream is = this.getClass().getClassLoader().getResourceAsStream(resourceName);
+        InputStream is = AntDoclet.class.getClassLoader().getResourceAsStream(resourceName);
         if (is == null) throw new FileNotFoundException(resourceName);
 
         try {
@@ -429,226 +599,105 @@ class AntDoclet {
      * Overview"</a>.
      */
     public static int
-    optionLength(String option) {
+    optionLength(String option) throws IOException {
 
-        // Options that go into the "Options" object:
-        if ("-d".equals(option))           return 2;
-        if ("-splitindex".equals(option))  return 2;
-        if ("-windowtitle".equals(option)) return 2;
-        if ("-doctitle".equals(option))    return 2;
-        if ("-header".equals(option))      return 2;
-        if ("-footer".equals(option))      return 2;
-        if ("-top".equals(option))         return 2;
-        if ("-bottom".equals(option))      return 2;
-        if ("-quiet".equals(option))       return 1;
-        if ("-notimestamp".equals(option)) return 1;
-        if ("-charset".equals(option))     return 2;
-        if ("-docencoding".equals(option)) return 2;
+        if ("-help".equals(option)) {
+            CommandLineOptions.printResource(
+                AntDoclet.class,
+                "start(RootDoc).txt",
+                Charset.forName("UTF-8"),
+                System.out
+            );
+            return 1;
+        }
 
-        // "Other" options:
-        if ("-antlib-file".equals(option))     return 2;
-        if ("-antlib-resource".equals(option)) return 2;
-        if ("-link".equals(option))            return 2;
-        if ("-linkoffline".equals(option))     return 3;
-        if ("-theme".equals(option))           return 2;
+        Method m = CommandLineOptions.getMethodForOption(option, AntDoclet.class);
 
-        return 0;
+        return m == null ? 0 : 1 + m.getParameterTypes().length;
     }
 
     /**
      * A doclet that generates documentation for <a href="http://ant.apache.org">APACHE ANT</a> tasks and other
      * artifacts.
      * <p>
-     *   Opens, reads and parses an <a href="http://ant.apache.org/manual/Types/antlib.html">ANTLIB</a> file and
-     *   generates one document per type, task, macro, preset and script defined therein.
+     *   Opens, reads and parses <a href="http://ant.apache.org/manual/Types/antlib.html">ANTLIB files and
+     *   resources</a>, and generates one document per type, task, macro, preset and script defined therein.
      * </p>
+     *
+     * <h3>Doclet command line options:</h3>
+     *
+     * <dl>
+     * {@main.commandLineOptions}
+     * </dl>
+     *
+     * <h3>Supported tags:</h3>
+     *
      * <p>
-     *   Supports the following command line options:
+     *   The following block tags may appear in the DOC comment of a class declaration that maps to an ANT type:
      * </p>
      * <dl>
-     *   <dt>{@code -antlib-file} <var>file</var></dt>
-     *   <dd>Source of task names an class names (mandatory).</dd>
-     *   <dt>{@code -html-output-directory} <var>dir</var></dt>
-     *   <dd>Where to create documentation in HTML format (optional).</dd>
-     *   <dt>{@code -mediawiki-output-directory} <var>dir</var></dt>
-     *   <dd>Where to create documentation in MEDIAWIKI markup format (optional).</dd>
-     *   <dt>{@code -link} <var>target-url</var></dt>
-     *   <dt>{@code -linkoffline} <var>target-url</var> <var>package-list-url</var></dt>
+     *   <dt><code>{&#64;ant.typeGroupName <var>type-group-name</var>}</code></dt>
      *   <dd>
-     *     See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">here</a>.
+     *     The name of the "type group" that the type belongs to, e.g. "{@code Task}".
      *   </dd>
-     *   <dt>{@code -doctitle} <var>text</var></dt>
+     *   <dt><code>{&#64;ant.typeGroupSubdir <var>dir-name</var>}</code></dt>
      *   <dd>
-     *     See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDJGBIE">here</a>.
+     *     The name of the subdirectory that contains the documentation of all ANT types of the type group; e.g.
+     *     "{@code tasks}".
      *   </dd>
-     *   <dt>{@code -windowtitle} <var>text</var></dt>
+     *   <dt><code>{&#64;ant.typeGroupHeading <var>text</var>}</code></dt>
      *   <dd>
-     *     See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">here</a>.
+     *     The heading to display above the list of types; e.g. "{@code Tasks}".
      *   </dd>
-     *   <dt>{@code -theme JAVA7|JAVA8}</dt>
-     *   <dd>Which style sheets and resources to use.</dd>
-     *   <dt>{@code -splitindex}</dt>
+     *   <dt><code>{&#64;ant.typeTitleMf <var>message-format</var>}</code></dt>
      *   <dd>
-     *     Splits the index file into multiple files, alphabetically, one file per letter, plus a file for any index
-     *     entries that start with non-alphabetical characters.
+     *     The message format to use to render the heading on each type details page; e.g. <code>"Task
+     *     &amp;quot;&amp;lt;{0}&amp;gt;&amp;quot;"</code>
      *   </dd>
-     *   <dt>{@code -charset} <var>name</var></dt>
+     *   <dt><code>{&#64;ant.typeHeadingMf <var>message-format</var>}</code></dt>
      *   <dd>
-     *     Specifies the HTML character set for this document.
+     *     The message format to use to render the title (i.e. the tooltip) of the heading on each type details page;
+     *     e.g. {@code "Task &amp;quot;&lt;code>&lt;{0}&gt;&lt;/code>&amp;quot;"}
      *   </dd>
-     *   <dt>{@code -docencoding} <var>name</var></dt>
+     *   <dt><code>{&#64;ant.group <var>group-name</var>}</code></dt>
      *   <dd>
-     *     Specifies the encoding of the generated HTML files.
+     *     Attribute and subelement descriptions are grouped by group name
+     *   </dd>
+     *   <dt><code>{&#64;ant.subelementOrder inheritedFirst}</code></dt>
+     *   <dd>
+     *     Enforces that the subelements <em>inherited</em> from superclasses appear <em>before</em> the non-inherited.
+     *     The default is that the subelements in their "natural" order.
      *   </dd>
      * </dl>
      */
     public static boolean
     start(final RootDoc rootDoc) throws Exception {
 
-        List<File>                                        antlibFiles      = new ArrayList<>();
-        List<String>                                      antlibResources  = new ArrayList<>();
-        final Map<String /*packageName*/, URL /*target*/> externalJavadocs = new HashMap<>();
-        Theme                                             theme            = Theme.JAVA8;
-        File[]                                            sourcePath       = { new File(".") };
-        File[]                                            classPath        = new File[0];
+        AntDoclet.rootDoc = rootDoc;
 
-        Options options   = new Options();
-        options.generator = "the ANT doclet http://doclet.unkrig.de";
-
+        // Apply the doclet options.
         for (String[] option : rootDoc.options()) {
 
-            // Options that go into the "Options" object:
-            if ("-d".equals(option[0])) {
-                options.destination = new File(option[1]);
-            } else
-            if ("-splitindex".equals(option[0])) {
-                options.splitIndex = true;
-            } else
-            if ("-windowtitle".equals(option[0])) {
-                options.windowTitle = option[1];
-            } else
-            if ("-doctitle".equals(option[0])) {
-                options.docTitle = option[1];
-            } else
-            if ("-header".equals(option[0])) {
-                options.header = option[1];
-            } else
-            if ("-footer".equals(option[0])) {
-                options.footer = option[1];
-            } else
-            if ("-top".equals(option[0])) {
-                options.top = option[1];
-            } else
-            if ("-bottom".equals(option[0])) {
-                options.bottom = option[1];
-            } else
-            if ("-quiet".equals(option[0])) {
-                options.quiet = true;
-            } else
-            if ("-notimestamp".equals(option[0])) {
-                options.noTimestamp = true;
-            } else
-            if ("-charset".equals(option[0])) {
-                options.htmlCharset = option[1];
-            } else
-            if ("-docencoding".equals(option[0])) {
-                options.documentCharset = Charset.forName(option[1]);
-            } else
+            Method m = CommandLineOptions.getMethodForOption(option[0], AntDoclet.class);
 
-            // "Other" options.
-            if ("-antlib-file".equals(option[0])) {
-                antlibFiles.add(new File(option[1]));
-            } else
-            if ("-antlib-resource".equals(option[0])) {
-                antlibResources.add(option[1]);
-            } else
-            if ("-link".equals(option[0])) {
+            // It is quite counterintuitive, but "RootDoc.options()" returns ALL options, not only those which
+            // qualified by 'optionLength()'.
+            if (m == null) continue;
 
-                String externalDocumentationUrl = option[1];
-
-                if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
-
-                URL externalDocumentationUrl2 = new URL(
-                    new URL("file", null, -1, options.destination.toString()),
-                    externalDocumentationUrl
-                );
-
-                Docs.readExternalJavadocs(
-                    externalDocumentationUrl2, // targetUrl
-                    externalDocumentationUrl2, // packageListUrl
-                    externalJavadocs,          // externalJavadocs
-                    rootDoc
-                );
-            } else
-            if ("-linkoffline".equals(option[0])) {
-
-                String externalDocumentationUrl = option[1];
-                String packageListLocation      = option[2];
-
-                if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
-                if (!packageListLocation.endsWith("/"))      packageListLocation      += "/";
-
-                URL externalDocumentationUrl2 = new URL(
-                    new URL("file", null, -1, options.destination.toString()),
-                    externalDocumentationUrl
-                );
-
-                URL packageListUrl = (
-                    packageListLocation.startsWith("http:") || packageListLocation.startsWith("file:")
-                    ? new URL(new URL("file", null, -1, System.getProperty("user.dir")), packageListLocation)
-                    : new URL("file", null, new File(packageListLocation).getAbsolutePath() + '/')
-                );
-                Docs.readExternalJavadocs(
-                    externalDocumentationUrl2, // targetUrl
-                    packageListUrl,            // packageListUrl
-                    externalJavadocs,          // externalJavadocs
-                    rootDoc
-                );
-            } else
-            if ("-theme".equals(option[0])) {
-                theme = Theme.valueOf(option[1]);
-            } else
-            if ("-sourcepath".equals(option[0]) && option.length == 2) {
-                sourcePath = parsePath(option[1]);
-            } else
-            if ("-classpath".equals(option[0]) && option.length == 2) {
-                classPath = parsePath(option[1]);
-            } else
-            {
-
-                // It is quite counterintuitive, but 'options()' returns ALL options, not only those which
-                // qualified by 'optionLength()'.
-                ;
+            int res;
+            try {
+                res = CommandLineOptions.applyCommandLineOption(option[0], m, option, 1, null);
+            } catch (Exception e) {
+                throw ExceptionUtil.wrap("Parsing command line option \"" + option[0] + "\"", e, IOException.class);
             }
+            assert res == option.length;
         }
 
         if (antlibResources.isEmpty() && antlibFiles.isEmpty()) {
             rootDoc.printWarning("Neither \"-antlib-resource\" nor \"-antlib-file\" option given");
         }
 
-        new AntDoclet(rootDoc, options, antlibResources, antlibFiles, externalJavadocs, theme, sourcePath, classPath).start2();
-
-        return true;
-    }
-
-    private static File[]
-    parsePath(String s) {
-
-        String[] sa = s.split(Pattern.quote(File.pathSeparator));
-
-        File[] result = new File[sa.length];
-        for (int i = 0; i < sa.length; i++) result[i] = new File(sa[i]);
-
-        return result;
-    }
-
-    /**
-     * Generates the ANT documentation for this configured object.
-     */
-    void
-    start2() throws Exception {
-
-        switch (this.theme) {
+        switch (AntDoclet.theme) {
 
         case JAVA7:
             String resourceNamePrefix = "de/unkrig/doclet/ant/theme/java7/";
@@ -659,7 +708,7 @@ class AntDoclet {
                 "resources/titlebar_end.gif",
                 "resources/titlebar.gif",
             }) {
-                File file = new File(this.options.destination, resourceNameSuffix);
+                File file = new File(AntDoclet.options.destination, resourceNameSuffix);
                 IoUtil.copyResource(
                     AntDoclet.class.getClassLoader(),
                     resourceNamePrefix + resourceNameSuffix,
@@ -673,7 +722,7 @@ class AntDoclet {
             IoUtil.copyResource(
                 AntDoclet.class.getClassLoader(),
                 "de/unkrig/doclet/ant/theme/java8/stylesheet.css",
-                new File(this.options.destination, "stylesheet.css"),
+                new File(AntDoclet.options.destination, "stylesheet.css"),
                 true // createMissingParentDirectories
             );
             break;
@@ -682,36 +731,36 @@ class AntDoclet {
         IoUtil.copyResource(
             AntDoclet.class.getClassLoader(),
             "de/unkrig/doclet/ant/templates/stylesheet2.css",
-            new File(this.options.destination, "stylesheet2.css"),
+            new File(AntDoclet.options.destination, "stylesheet2.css"),
             true // createMissingParentDirectories
         );
 
         // Render "index.html" (the frameset).
         NoTemplate.render(
             IndexHtml.class,
-            new File(this.options.destination, "index.html"),
-            (IndexHtml indexHtml) -> { indexHtml.render(AntDoclet.this.options); },
+            new File(AntDoclet.options.destination, "index.html"),
+            (IndexHtml indexHtml) -> { indexHtml.render(AntDoclet.options); },
             true,
-            this.options.documentCharset,
-            this.options.quiet
+            AntDoclet.options.documentCharset,
+            AntDoclet.options.quiet
         );
 
         final LinkedHashMap<ClassDoc, AntTypeGroup> antTypeGroups = new LinkedHashMap<>();
-        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.Task"), new AntTypeGroup(
+        antTypeGroups.put(AntDoclet.rootDoc.classNamed("org.apache.tools.ant.Task"), new AntTypeGroup(
             "tasks",
             "Task", // typeGroupName
             "Tasks",
             "Task \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
         ));
-        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.types.ResourceCollection"), new AntTypeGroup(
+        antTypeGroups.put(AntDoclet.rootDoc.classNamed("org.apache.tools.ant.types.ResourceCollection"), new AntTypeGroup(
             "resourceCollections",
             "Resource collection", // typeGroupName
             "Resource collections",
             "Resource collection \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
         ));
-        antTypeGroups.put(this.rootDoc.classNamed("org.apache.tools.ant.filters.ChainableReader"), new AntTypeGroup(
+        antTypeGroups.put(AntDoclet.rootDoc.classNamed("org.apache.tools.ant.filters.ChainableReader"), new AntTypeGroup(
             "chainableReaders",
             "Chainable reader", // typeGroupName
             "Chainable readers",
@@ -719,7 +768,7 @@ class AntDoclet {
             "<code>&lt;{0}&gt;</code>"
         ));
         antTypeGroups.put(
-            this.rootDoc.classNamed("org.apache.tools.ant.taskdefs.condition.Condition"),
+            AntDoclet.rootDoc.classNamed("org.apache.tools.ant.taskdefs.condition.Condition"),
             new AntTypeGroup(
                 "conditions",
                 "Condition", // typeGroupName
@@ -736,14 +785,14 @@ class AntDoclet {
             "<code>&lt;{0}&gt;</code>"
         ));
 
-        for (String antlibResource : this.antlibResources) {
+        for (String antlibResource : AntDoclet.antlibResources) {
             try {
-                this.parseAntlibResource(antlibResource, antTypeGroups);
+                AntDoclet.parseAntlibResource(antlibResource, antTypeGroups);
             } catch (Longjump l) {}
         }
 
-        for (File antlibFile : this.antlibFiles) {
-            this.parseAntlibFile(antlibFile, antTypeGroups);
+        for (File antlibFile : AntDoclet.antlibFiles) {
+            AntDoclet.parseAntlibFile(antlibFile, antTypeGroups);
         }
 
         // Now render the type documentation pages, e.g. "tasks/myTask.html"
@@ -754,11 +803,11 @@ class AntDoclet {
 
                 // Copy any "pkg/doc-files/" tree to "typegroup/doc-files/".
                 URL docFilesLocation = IoUtil.findOnPath(
-                    this.sourcePath,
+                    AntDoclet.sourcePath,
                     antType.classDoc.containingPackage().name().replace('.', '/') + "/doc-files"
                 );
                 if (docFilesLocation != null) {
-                    File destinationFolder = new File(this.options.destination, typeGroup.subdir + "/doc-files");
+                    File destinationFolder = new File(AntDoclet.options.destination, typeGroup.subdir + "/doc-files");
                     IoUtil.createMissingParentDirectoriesFor(destinationFolder);
                     IoUtil.copyTree(docFilesLocation, destinationFolder, CollisionStrategy.IO_EXCEPTION_IF_DIFFERENT);
                 }
@@ -766,13 +815,13 @@ class AntDoclet {
                 // Because the HTML page hierarchy and the fragment identifier names are different from the standard
                 // JAVADOC structure, we must have a custom link maker.
                 final Html html = new Html(new Html.ExternalJavadocsLinkMaker(
-                    this.externalJavadocs,
-                    this.linkMaker(antType, typeGroup, antTypeGroups, this.rootDoc)
+                    AntDoclet.externalJavadocs,
+                    AntDoclet.linkMaker(antType, typeGroup, antTypeGroups, AntDoclet.rootDoc)
                 ));
 
                 NoTemplate.render(
                     TypeHtml.class,
-                    new File(this.options.destination, typeGroup.subdir + '/' + antType.name + ".html"),
+                    new File(AntDoclet.options.destination, typeGroup.subdir + '/' + antType.name + ".html"),
                     new ConsumerWhichThrows<TypeHtml, RuntimeException>() {
 
                         @Override public void
@@ -782,78 +831,91 @@ class AntDoclet {
                                 antTypeGroups.values(),
                                 atwc,
                                 html,
-                                AntDoclet.this.rootDoc,
-                                AntDoclet.this.options
+                                AntDoclet.rootDoc,
+                                AntDoclet.options
                             );
                         }
                     },
                     true,
-                    this.options.documentCharset,
-                    this.options.quiet
+                    AntDoclet.options.documentCharset,
+                    AntDoclet.options.quiet
                 );
             }
         }
 
-        final LinkMaker linkMaker = this.linkMaker(null, null, antTypeGroups, this.rootDoc);
-        final Html      html      = new Html(new Html.ExternalJavadocsLinkMaker(this.externalJavadocs, linkMaker));
+        final LinkMaker linkMaker = AntDoclet.linkMaker(null, null, antTypeGroups, AntDoclet.rootDoc);
+        final Html      html      = new Html(new Html.ExternalJavadocsLinkMaker(AntDoclet.externalJavadocs, linkMaker));
 
         // Generate the document that is loaded into the "left frame" and displays all types in groups.
         NoTemplate.render(
             AllDefinitionsHtml.class,
-            new File(this.options.destination, "alldefinitions-frame.html"),
+            new File(AntDoclet.options.destination, "alldefinitions-frame.html"),
             (AllDefinitionsHtml allDefinitionsHtml) -> {
                 allDefinitionsHtml.render(
                     antTypeGroups.values(), // antTypeGroups
-                    AntDoclet.this.rootDoc, // rootDoc
-                    AntDoclet.this.options, // options
+                    AntDoclet.rootDoc, // rootDoc
+                    AntDoclet.options, // options
                     html,                   // html
                     "classFrame"            // target
                 );
             },
             true,
-            this.options.documentCharset,
-            this.options.quiet
+            AntDoclet.options.documentCharset,
+            AntDoclet.options.quiet
         );
 
         // Generate the "All definitions" document that is used only in the no-frame variant.
         NoTemplate.render(
             AllDefinitionsHtml.class,
-            new File(this.options.destination, "alldefinitions-noframe.html"),
+            new File(AntDoclet.options.destination, "alldefinitions-noframe.html"),
             (AllDefinitionsHtml allDefinitionsHtml) -> {
                 allDefinitionsHtml.render(
                     antTypeGroups.values(), // antTypeGroups
-                    AntDoclet.this.rootDoc, // rootDoc
-                    AntDoclet.this.options, // options
+                    AntDoclet.rootDoc, // rootDoc
+                    AntDoclet.options, // options
                     html,                   // html
                     null                    // target
                 );
             },
             true,
-            this.options.documentCharset,
-            this.options.quiet
+            AntDoclet.options.documentCharset,
+            AntDoclet.options.quiet
         );
 
         // Generate "overview-summary.html" - the document that is initially loaded into the "right frame" and displays
         // all type summaries (type name and first sentence of description).
         NoTemplate.render(
             OverviewSummaryHtml.class,
-            new File(this.options.destination, "overview-summary.html"),
+            new File(AntDoclet.options.destination, "overview-summary.html"),
             (OverviewSummaryHtml overviewSummaryHtml) -> {
                 overviewSummaryHtml.render(
                     antTypeGroups.values(),
-                    AntDoclet.this.rootDoc,
-                    AntDoclet.this.options,
+                    AntDoclet.rootDoc,
+                    AntDoclet.options,
                     html
                 );
             },
             true,
-            this.options.documentCharset,
-            this.options.quiet
+            AntDoclet.options.documentCharset,
+            AntDoclet.options.quiet
         );
 
         // "Render" an empty "package-list" file. That comes in handy in envorinments where you cannot control the
         // "-link" and/or "-linkoffline" links that are passed to JAVADOC, e.g. the JAVADOC MAVEN plug-in.
-        IoUtil.outputFile(new File(this.options.destination, "package-list"), (File f) -> f.createNewFile(), true);
+        IoUtil.outputFile(new File(AntDoclet.options.destination, "package-list"), (File f) -> f.createNewFile(), true);
+
+        return true;
+    }
+
+    private static File[]
+    parsePath(String s) {
+
+        String[] sa = s.split(Pattern.quote(File.pathSeparator));
+
+        File[] result = new File[sa.length];
+        for (int i = 0; i < sa.length; i++) result[i] = new File(sa[i]);
+
+        return result;
     }
 
     /**
@@ -865,30 +927,30 @@ class AntDoclet {
      * </p>
      * @param result Parsed ANT types are added to this map
      */
-    private void
+    private static void
     parseAntlibResource(
         String                            antlibResourceName,
         final Map<ClassDoc, AntTypeGroup> result
     ) throws Exception, Longjump {
 
-        URL antlibLocation = IoUtil.findOnPath(this.sourcePath, antlibResourceName);
+        URL antlibLocation = IoUtil.findOnPath(AntDoclet.sourcePath, antlibResourceName);
         if (antlibLocation == null) {
-            antlibLocation = IoUtil.findOnPath(this.classPath, antlibResourceName);
+            antlibLocation = IoUtil.findOnPath(AntDoclet.classPath, antlibResourceName);
             if (antlibLocation == null) {
-                this.rootDoc.printError(
+                AntDoclet.rootDoc.printError(
                     "Antlib resource \""
                     + antlibResourceName
                     + "\" not found on the source path ("
-                    + Arrays.toString(this.sourcePath)
+                    + Arrays.toString(AntDoclet.sourcePath)
                     + ") and the class path ("
-                    + Arrays.toString(this.classPath)
+                    + Arrays.toString(AntDoclet.classPath)
                     + ")"
                 );
                 throw new Longjump();
             }
         }
 
-        this.parseAntlibStream(
+        AntDoclet.parseAntlibStream(
             antlibLocation.openStream(), // antlibStream
             antlibLocation.toString(),   // publicId
             result                       // result
@@ -904,11 +966,11 @@ class AntDoclet {
      * @param classPath TODO
      * @param result Parsed ANT types are added to this map
      */
-    private void
+    private static void
     parseAntlibFile(File antlibFile, final Map<ClassDoc, AntTypeGroup> result) throws Exception {
 
         Document document = XmlUtil.parse(DocumentBuilderFactory.newInstance().newDocumentBuilder(), antlibFile, null);
-        this.parseAntlibDocument(document, result);
+        AntDoclet.parseAntlibDocument(document, result);
     }
 
     /**
@@ -920,7 +982,7 @@ class AntDoclet {
      * @param classPath TODO
      * @param result Parsed ANT types are added to this map
      */
-    private void
+    private static void
     parseAntlibStream(
         InputStream                       antlibStream,
         @Nullable String                  publicId,
@@ -932,10 +994,10 @@ class AntDoclet {
 
         Document document = XmlUtil.parse(DocumentBuilderFactory.newInstance().newDocumentBuilder(), inputSource);
 
-        this.parseAntlibDocument(document, result);
+        AntDoclet.parseAntlibDocument(document, result);
     }
 
-    private void
+    private static void
     parseAntlibDocument(Document document, final Map<ClassDoc, AntTypeGroup> result) throws Exception {
 
         document.getDocumentElement().normalize();
@@ -948,20 +1010,20 @@ class AntDoclet {
             AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
         )) {
             try {
-                this.parseTypedef(typedefElement, this.sourcePath, this.classPath, this.rootDoc, result);
+                AntDoclet.parseTypedef(typedefElement, AntDoclet.sourcePath, AntDoclet.classPath, AntDoclet.rootDoc, result);
             } catch (Longjump l) {
                 continue;
             }
         }
 
         if (document.getElementsByTagName("macrodef").getLength() > 0) {
-            this.rootDoc.printWarning("<macrodef>s are not yet supported");
+            AntDoclet.rootDoc.printWarning("<macrodef>s are not yet supported");
         }
         if (document.getElementsByTagName("presetdef").getLength() > 0) {
-            this.rootDoc.printWarning("<presetdef>s are not yet supported");
+            AntDoclet.rootDoc.printWarning("<presetdef>s are not yet supported");
         }
         if (document.getElementsByTagName("scriptdef").getLength() > 0) {
-            this.rootDoc.printWarning("<scriptdef>s are not yet supported");
+            AntDoclet.rootDoc.printWarning("<scriptdef>s are not yet supported");
         }
     }
 
@@ -973,7 +1035,7 @@ class AntDoclet {
      *   <var>sourcePath</var>.
      * </p>
      */
-    private void
+    private static void
     parseTypedef(
         Element                     typedefElement,
         @Nullable File[]            sourcePath,
@@ -997,7 +1059,7 @@ class AntDoclet {
         ) {
 
             // <typedef resource="path/to/antlib.xml" />
-            this.parseAntlibResource(resourceAttribute, result);
+            AntDoclet.parseAntlibResource(resourceAttribute, result);
         } else
         if (
             nameAttribute         == null
@@ -1008,7 +1070,7 @@ class AntDoclet {
         ) {
 
             // <typedef file="path/to/antlib.xml" />
-            this.parseAntlibFile(new File(fileAttribute), result);
+            AntDoclet.parseAntlibFile(new File(fileAttribute), result);
         } else
         if (
             nameAttribute         != null
@@ -1093,7 +1155,7 @@ class AntDoclet {
         return result.length() == 0 ? null : result;
     }
 
-    private LinkMaker
+    private static LinkMaker
     linkMaker(
         @Nullable final AntType           antType,
         @Nullable final AntTypeGroup      typeGroup,
@@ -1127,7 +1189,7 @@ class AntDoclet {
 
                     // Link to external ANT task/type documentation?
                     {
-                        Link link = AntDoclet.this.externalAntdocs.get(to);
+                        Link link = AntDoclet.externalAntdocs.get(to);
                         if (link != null) {
                             return new Link(link.href, StringUtil.firstLetterToUpperCase(link.defaultLabelHtml));
                         }
