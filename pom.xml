@@ -8,7 +8,7 @@
 
 	<groupId>de.unkrig</groupId>
 	<artifactId>doclet-ant</artifactId>
-	<version>1.0.5</version>
+	<version>1.0.6-SNAPSHOT</version>
 
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
@@ -111,6 +111,9 @@
 							<additionalparam>-Xdoclint:none</additionalparam>
 							<quiet>true</quiet>
 							<encoding>UTF-8</encoding>
+							<tags>
+								<tag><name>main.commandLineOptions</name><placement>X</placement></tag>
+							</tags>
 						</configuration>
 					</execution>
 
