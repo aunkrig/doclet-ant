@@ -130,7 +130,10 @@ class AntDoclet {
     private static File[]                                 classPath = new File[0];
 
     private static Mapping<ClassDoc, Link> externalAntdocs = ObjectUtil.almostNull();
-    static {
+
+    private static Mapping<ClassDoc, Link>
+    getAntTypes(RootDoc rootDoc) {
+
         Map<ClassDoc, Link> m = new HashMap<>();
 
         // Resource "de/unkrig/doclet/ant/AntDoclet/external-antdocs.properties" provides a number of
@@ -232,7 +235,7 @@ class AntDoclet {
             }
         }
 
-        AntDoclet.externalAntdocs = Mappings.fromMap(m);
+        return Mappings.fromMap(m);
     }
 
     // ======================= CONFIGURATION SETTERS =======================
@@ -387,6 +390,12 @@ class AntDoclet {
             AntDoclet.rootDoc
         );
     }
+
+    /**
+     * For compatibility with the standard JAVADOC doclet; ignored.
+     */
+    @CommandLineOption(name = "-tag") public static void
+    addTag(String spec) {}
 
     /**
      * Which style sheets and resources to use.
@@ -675,6 +684,8 @@ class AntDoclet {
 
         AntDoclet.rootDoc = rootDoc;
 
+        AntDoclet.externalAntdocs = getAntTypes(rootDoc);
+
         // Apply the doclet options.
         for (String[] option : rootDoc.options()) {
 
@@ -942,7 +953,7 @@ class AntDoclet {
                     + antlibResourceName
                     + "\" not found on the source path ("
                     + Arrays.toString(AntDoclet.sourcePath)
-                    + ") and the class path ("
+                    + ") nor on the class path ("
                     + Arrays.toString(AntDoclet.classPath)
                     + ")"
                 );
@@ -963,7 +974,6 @@ class AntDoclet {
      * <p>
      *   The <var>antlibFile</var> may contain references to nested ANTLIB files and resources.
      * </p>
-     * @param classPath TODO
      * @param result Parsed ANT types are added to this map
      */
     private static void
@@ -979,7 +989,6 @@ class AntDoclet {
      * <p>
      *   The <var>antlibFile</var> may contain references to nested ANTLIB files and resources.
      * </p>
-     * @param classPath TODO
      * @param result Parsed ANT types are added to this map
      */
     private static void
