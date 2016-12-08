@@ -24,6 +24,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// CHECKSTYLE Wrap:OFF
+
 package de.unkrig.doclet.ant.templates;
 
 import java.util.ArrayList;
@@ -685,8 +687,18 @@ class TypeHtml extends AbstractDetailHtml {
             );
         }
 
-        String suffix = mandatory ? " (mandatory)" : "";
-        return "<a name=\"" + attribute.methodDoc.containingClass().qualifiedName() + "/" + attribute.methodDoc.name() + "\" /><code>" + attribute.name + "=\"" + rhs + "\"</code>" + suffix;
+        return (
+            "<a name=\""
+            + attribute.methodDoc.containingClass().qualifiedName()
+            + "/" 
+            + attribute.methodDoc.name()
+            + "\" /><code>" 
+            + attribute.name 
+            + "=\"" 
+            + rhs 
+            + "\"</code>" 
+            + (mandatory ? " (mandatory)" : "")
+        );
     }
 
     private void

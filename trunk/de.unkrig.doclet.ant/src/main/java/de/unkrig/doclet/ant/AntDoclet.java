@@ -101,7 +101,7 @@ import de.unkrig.notemplate.javadocish.Options;
  * @see <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/javadoc/doclet/overview.html">"Doclet
  *      Overview"</a>
  */
-public
+public // SUPPRESS CHECKSTYLE HideUtilityClassConstructor
 class AntDoclet {
 
     static { AssertionUtil.enableAssertionsForThisClass(); }
@@ -120,14 +120,15 @@ class AntDoclet {
 
     private enum Theme { JAVA7, JAVA8 }
 
-    private static RootDoc                                rootDoc = ObjectUtil.almostNull();
-    private static final Options                          options = new Options();
-    private static final Collection<String>               antlibResources = new ArrayList<>();
-    private static final Collection<File>                 antlibFiles = new ArrayList<>();
+    // SUPPRESS CHECKSTYLE ConstantName:8
+    private static RootDoc                                rootDoc          = ObjectUtil.almostNull();
+    private static final Options                          options          = new Options();
+    private static final Collection<String>               antlibResources  = new ArrayList<>();
+    private static final Collection<File>                 antlibFiles      = new ArrayList<>();
     private static final Map<String /*packageName*/, URL> externalJavadocs = new HashMap<>();
-    private static Theme                                  theme = Theme.JAVA8;
-    private static File[]                                 sourcePath = { new File(".") };
-    private static File[]                                 classPath = new File[0];
+    private static Theme                                  theme            = Theme.JAVA8;
+    private static File[]                                 sourcePath       = { new File(".") };
+    private static File[]                                 classPath        = new File[0];
 
     private static Mapping<ClassDoc, Link> externalAntdocs = ObjectUtil.almostNull();
 
@@ -764,20 +765,26 @@ class AntDoclet {
             "Task \"&lt;{0}&gt;\"",
             "<code>&lt;{0}&gt;</code>"
         ));
-        antTypeGroups.put(AntDoclet.rootDoc.classNamed("org.apache.tools.ant.types.ResourceCollection"), new AntTypeGroup(
-            "resourceCollections",
-            "Resource collection", // typeGroupName
-            "Resource collections",
-            "Resource collection \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
-        antTypeGroups.put(AntDoclet.rootDoc.classNamed("org.apache.tools.ant.filters.ChainableReader"), new AntTypeGroup(
-            "chainableReaders",
-            "Chainable reader", // typeGroupName
-            "Chainable readers",
-            "Chainable reader \"&lt;{0}&gt;\"",
-            "<code>&lt;{0}&gt;</code>"
-        ));
+        antTypeGroups.put(
+            AntDoclet.rootDoc.classNamed("org.apache.tools.ant.types.ResourceCollection"),
+            new AntTypeGroup(
+                "resourceCollections",
+                "Resource collection", // typeGroupName
+                "Resource collections",
+                "Resource collection \"&lt;{0}&gt;\"",
+                "<code>&lt;{0}&gt;</code>"
+            )
+        );
+        antTypeGroups.put(
+            AntDoclet.rootDoc.classNamed("org.apache.tools.ant.filters.ChainableReader"),
+            new AntTypeGroup(
+                "chainableReaders",
+                "Chainable reader", // typeGroupName
+                "Chainable readers",
+                "Chainable reader \"&lt;{0}&gt;\"",
+                "<code>&lt;{0}&gt;</code>"
+            )
+        );
         antTypeGroups.put(
             AntDoclet.rootDoc.classNamed("org.apache.tools.ant.taskdefs.condition.Condition"),
             new AntTypeGroup(
@@ -864,8 +871,8 @@ class AntDoclet {
             (AllDefinitionsHtml allDefinitionsHtml) -> {
                 allDefinitionsHtml.render(
                     antTypeGroups.values(), // antTypeGroups
-                    AntDoclet.rootDoc, // rootDoc
-                    AntDoclet.options, // options
+                    AntDoclet.rootDoc,      // rootDoc
+                    AntDoclet.options,      // options
                     html,                   // html
                     "classFrame"            // target
                 );
@@ -882,8 +889,8 @@ class AntDoclet {
             (AllDefinitionsHtml allDefinitionsHtml) -> {
                 allDefinitionsHtml.render(
                     antTypeGroups.values(), // antTypeGroups
-                    AntDoclet.rootDoc, // rootDoc
-                    AntDoclet.options, // options
+                    AntDoclet.rootDoc,      // rootDoc
+                    AntDoclet.options,      // options
                     html,                   // html
                     null                    // target
                 );
@@ -1019,7 +1026,13 @@ class AntDoclet {
             AntDoclet.<Element>nl2i(document.getElementsByTagName("componentdef"))
         )) {
             try {
-                AntDoclet.parseTypedef(typedefElement, AntDoclet.sourcePath, AntDoclet.classPath, AntDoclet.rootDoc, result);
+                AntDoclet.parseTypedef(
+                    typedefElement,
+                    AntDoclet.sourcePath,
+                    AntDoclet.classPath,
+                    AntDoclet.rootDoc,
+                    result
+                );
             } catch (Longjump l) {
                 continue;
             }
