@@ -53,9 +53,11 @@ import de.unkrig.commons.doclet.Docs;
 import de.unkrig.commons.doclet.Types;
 import de.unkrig.commons.doclet.html.Html;
 import de.unkrig.commons.lang.AssertionUtil;
+import de.unkrig.commons.lang.StringUtil;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.Notations;
+import de.unkrig.commons.text.pattern.PatternUtil;
 import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.AntDoclet;
 import de.unkrig.doclet.ant.AntDoclet.AntAttribute;
@@ -484,6 +486,23 @@ class TypeHtml extends AbstractDetailHtml {
             rootDoc
         );
 
+        if (defaultValueHtmlText != null) {
+            
+            // Display control characters as "&#xxx;".
+            for (int i = 0; i < defaultValueHtmlText.length(); i++) {
+                char c = defaultValueHtmlText.charAt(i);
+                if (c < ' ') {
+                    defaultValueHtmlText = (
+                        defaultValueHtmlText.substring(0, i)
+                        + "&amp;#"
+                        + (int) c
+                        + ';'
+                        + defaultValueHtmlText.substring(i + 1)
+                    );
+                }
+            }
+        }
+        
         // Non-plain links in the tag argument contain "<code>...</code>" which we don't want
         // e.g. when comparing against enum constants.
         String defaultValue = (
