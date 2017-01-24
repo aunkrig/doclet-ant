@@ -487,7 +487,7 @@ class TypeHtml extends AbstractDetailHtml {
         );
 
         if (defaultValueHtmlText != null) {
-            
+
             // Display control characters as "&#xxx;".
             for (int i = 0; i < defaultValueHtmlText.length(); i++) {
                 char c = defaultValueHtmlText.charAt(i);
@@ -502,7 +502,7 @@ class TypeHtml extends AbstractDetailHtml {
                 }
             }
         }
-        
+
         // Non-plain links in the tag argument contain "<code>...</code>" which we don't want
         // e.g. when comparing against enum constants.
         String defaultValue = (
@@ -709,13 +709,13 @@ class TypeHtml extends AbstractDetailHtml {
         return (
             "<a name=\""
             + attribute.methodDoc.containingClass().qualifiedName()
-            + "/" 
+            + "/"
             + attribute.methodDoc.name()
-            + "\" /><code>" 
-            + attribute.name 
-            + "=\"" 
-            + rhs 
-            + "\"</code>" 
+            + "\" /><code>"
+            + attribute.name
+            + "=\""
+            + rhs
+            + "\"</code>"
             + (mandatory ? " (mandatory)" : "")
         );
     }
@@ -993,6 +993,8 @@ class TypeHtml extends AbstractDetailHtml {
 
     private static ConstructorDoc
     getSingleStringParameterConstructor(ClassDoc classDoc, Doc ref, DocErrorReporter errorReporter) throws Longjump {
+
+        // NOTICE: ANT unfortunately does NOT support "singo-CharSequence-parameter" constructors.
 
         for (ConstructorDoc cd : classDoc.constructors()) {
 
