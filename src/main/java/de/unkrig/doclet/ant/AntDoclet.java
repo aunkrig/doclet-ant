@@ -254,26 +254,26 @@ class AntDoclet {
      * </p>
      */
     @CommandLineOption(name = "-d") public static void
-    setDestination(File directory) { options.destination = directory; }
+    setDestination(File directory) { AntDoclet.options.destination = directory; }
 
     /**
      * Splits the index file into multiple files, alphabetically, one file per letter, plus a file for any index
      * entries that start with non-alphabetical characters.
      */
     @CommandLineOption(name = "-splitindex") public static void
-    setSplitIndex() { options.splitIndex = true; }
+    setSplitIndex() { AntDoclet.options.splitIndex = true; }
 
     /**
      * The charset to use when writing the HTML files. The default is the JVM default charset, "${file.encoding}".
      */
     @CommandLineOption(name = "-docencoding") public static void
-    setDocEncoding(Charset charset) { options.documentCharset = charset; }
+    setDocEncoding(Charset charset) { AntDoclet.options.documentCharset = charset; }
 
     /**
      * The HTML character set for this document.
      */
     @CommandLineOption(name = "-charset") public static void
-    setCharset(String name) { options.htmlCharset = name; }
+    setCharset(String name) { AntDoclet.options.htmlCharset = name; }
 
     /**
      * The title to place near the top of the overview summary file. The text specified in the title tag is placed as
@@ -281,40 +281,40 @@ class AntDoclet {
      * white space.
      */
     @CommandLineOption(name = "-doctitle") public static void
-    setDocTitle(String htmlText) { options.docTitle = htmlText; }
+    setDocTitle(String htmlText) { AntDoclet.options.docTitle = htmlText; }
 
     /**
      * The header text to be placed at the top of each output file. The header is placed to the right of the upper
      * navigation bar. The header can contain HTML tags and white space.
      */
     @CommandLineOption(name = "-header") public static void
-    setHeader(String text) { options.header = text; }
+    setHeader(String text) { AntDoclet.options.header = text; }
 
     /**
      * The footer text to be placed at the bottom of each output file. The footer value is placed to the right of the
      * lower navigation bar. The footer value can contain HTML tags and white space.
      */
     @CommandLineOption(name = "-footer") public static void
-    setFooter(String text) { options.footer = text; }
+    setFooter(String text) { AntDoclet.options.footer = text; }
 
     /**
      * The text to be placed at the top of each output file.
      */
     @CommandLineOption(name = "-top") public static void
-    setTop(String text) { options.top = text; }
+    setTop(String text) { AntDoclet.options.top = text; }
 
     /**
      * The text to be placed at the bottom of each output file. The text is placed at the bottom of the page,
      * underneath the lower navigation bar. The text can contain HTML tags and white space.
      */
     @CommandLineOption(name = "-bottom") public static void
-    setBottom(String text) { options.bottom = text; }
+    setBottom(String text) { AntDoclet.options.bottom = text; }
 
     /**
      * Suppress normal output.
      */
     @CommandLineOption(name = "-quiet") public static void
-    setQuiet() { options.quiet = true; }
+    setQuiet() { AntDoclet.options.quiet = true; }
 
     /**
      * Suppresses the time stamp, which is hidden in an HTML comment in the generated HTML near the top of each page.
@@ -323,7 +323,7 @@ class AntDoclet {
      * The time stamp includes the javadoc command release number.
      */
     @CommandLineOption(name = "-notimestamp") public static void
-    setNoTimestamp() { options.noTimestamp = true; }
+    setNoTimestamp() { AntDoclet.options.noTimestamp = true; }
 
     @CommandLineOptionGroup(cardinality = CommandLineOptionGroup.Cardinality.ONE_OR_MORE)
     interface AntlibGroup {}
@@ -333,14 +333,14 @@ class AntDoclet {
      * the ANTLIB concept</a>.
      */
     @CommandLineOption(name = "-antlib-file", group = AntlibGroup.class) public static void
-    addAntlibFile(File file) { antlibFiles.add(file); }
+    addAntlibFile(File file) { AntDoclet.antlibFiles.add(file); }
 
     /**
      * The name of an ANTLIB resource to parse, see <a href="https://ant.apache.org/manual/Types/antlib.html">the
      * documentation of the ANTLIB concept</a>.
      */
     @CommandLineOption(name = "-antlib-resource", group = AntlibGroup.class) public static void
-    addAntlibResource(String name) { antlibResources.add(name); }
+    addAntlibResource(String name) { AntDoclet.antlibResources.add(name); }
 
     /**
      * See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDEDJFI">the JAVADOC
@@ -352,14 +352,14 @@ class AntDoclet {
         if (!externalDocumentationUrl.endsWith("/")) externalDocumentationUrl += "/";
 
         URL externalDocumentationUrl2 = new URL(
-            new URL("file", null, -1, options.destination.toString()),
+            new URL("file", null, -1, AntDoclet.options.destination.toString()),
             externalDocumentationUrl
         );
 
         Docs.readExternalJavadocs(
-            externalDocumentationUrl2, // targetUrl
-            externalDocumentationUrl2, // packageListUrl
-            externalJavadocs,          // externalJavadocs
+            externalDocumentationUrl2,  // targetUrl
+            externalDocumentationUrl2,  // packageListUrl
+            AntDoclet.externalJavadocs, // externalJavadocs
             AntDoclet.rootDoc
         );
     }
@@ -375,7 +375,7 @@ class AntDoclet {
         if (!packageListLocation.endsWith("/"))      packageListLocation      += "/";
 
         URL externalDocumentationUrl2 = new URL(
-            new URL("file", null, -1, options.destination.toString()),
+            new URL("file", null, -1, AntDoclet.options.destination.toString()),
             externalDocumentationUrl
         );
 
@@ -385,9 +385,9 @@ class AntDoclet {
             : new URL("file", null, new File(packageListLocation).getAbsolutePath() + '/')
         );
         Docs.readExternalJavadocs(
-            externalDocumentationUrl2, // targetUrl
-            packageListUrl,            // packageListUrl
-            externalJavadocs,          // externalJavadocs
+            externalDocumentationUrl2,  // targetUrl
+            packageListUrl,             // packageListUrl
+            AntDoclet.externalJavadocs, // externalJavadocs
             AntDoclet.rootDoc
         );
     }
@@ -410,20 +410,20 @@ class AntDoclet {
      * Takes also effect for loading ANTLIB resources.
      */
     @CommandLineOption(name = "-sourcepath") public static void
-    setSourcePath(String sourcePath) { AntDoclet.sourcePath = parsePath(sourcePath); }
+    setSourcePath(String sourcePath) { AntDoclet.sourcePath = AntDoclet.parsePath(sourcePath); }
 
     /**
      * Takes also effect for loading ANTLIB resources.
      */
     @CommandLineOption(name = "-classpath") public static void
-    setClassPath(String classPath) { AntDoclet.classPath = parsePath(classPath); }
+    setClassPath(String classPath) { AntDoclet.classPath = AntDoclet.parsePath(classPath); }
 
     /**
      * See <a href="http://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html#CHDBIEEI">the JAVADOC
      * tool documentation for the "-windowtitle" command line option</a>.
      */
     @CommandLineOption(name = "-windowtitle") public static void
-    setWindowTitle(String text) { options.windowTitle = text; }
+    setWindowTitle(String text) { AntDoclet.options.windowTitle = text; }
 
     // ======================= END CONFIGURATION SETTERS =======================
 
@@ -685,7 +685,7 @@ class AntDoclet {
 
         AntDoclet.rootDoc = rootDoc;
 
-        AntDoclet.externalAntdocs = getAntTypes(rootDoc);
+        AntDoclet.externalAntdocs = AntDoclet.getAntTypes(rootDoc);
 
         // Apply the doclet options.
         for (String[] option : rootDoc.options()) {
@@ -705,7 +705,7 @@ class AntDoclet {
             assert res == option.length;
         }
 
-        if (antlibResources.isEmpty() && antlibFiles.isEmpty()) {
+        if (AntDoclet.antlibResources.isEmpty() && AntDoclet.antlibFiles.isEmpty()) {
             rootDoc.printWarning("Neither \"-antlib-resource\" nor \"-antlib-file\" option given");
         }
 
@@ -1066,11 +1066,11 @@ class AntDoclet {
         Map<ClassDoc, AntTypeGroup> result
     ) throws Exception, Longjump {
 
-        final String nameAttribute      = getOptionalAttribute(typedefElement, "name");
-        final String classnameAttribute = getOptionalAttribute(typedefElement, "classname");
-        final String adaptToAttribute   = getOptionalAttribute(typedefElement, "adaptTo");
-        final String resourceAttribute  = getOptionalAttribute(typedefElement, "resource");
-        final String fileAttribute      = getOptionalAttribute(typedefElement, "file");
+        final String nameAttribute      = AntDoclet.getOptionalAttribute(typedefElement, "name");
+        final String classnameAttribute = AntDoclet.getOptionalAttribute(typedefElement, "classname");
+        final String adaptToAttribute   = AntDoclet.getOptionalAttribute(typedefElement, "adaptTo");
+        final String resourceAttribute  = AntDoclet.getOptionalAttribute(typedefElement, "resource");
+        final String fileAttribute      = AntDoclet.getOptionalAttribute(typedefElement, "file");
 
         if (
             nameAttribute         == null
@@ -1335,6 +1335,17 @@ class AntDoclet {
                                 if (params.length != 1) continue;
                                 for (MethodDoc md : Docs.methods(params[0].type().asClassDoc(), false, true)) {
                                     if (md == toMethod) {
+                                        String attributeName = md.name();
+                                        {
+                                            Matcher m = AntDoclet.SET_ATTRIBUTE_METHOD_NAME.matcher(attributeName);
+                                            if (m.matches()) {
+                                                attributeName = (
+                                                    Notations
+                                                    .fromCamelCase(m.group("attributeName"))
+                                                    .toLowerCamelCase()
+                                                );
+                                            }
+                                        }
                                         String fragment = '#' + md.containingClass().qualifiedName() + "/" + md.name();
                                         return new Link(
                                             (
@@ -1343,7 +1354,7 @@ class AntDoclet {
                                                 typeGroup == tg ? t.name + ".html" + fragment :
                                                 "../" + tg.subdir + '/' + t.name + ".html" + fragment
                                             ),
-                                            md.name() + "=\"...\""
+                                            attributeName + "=\"...\""
                                         );
                                     }
                                 }
@@ -1361,6 +1372,11 @@ class AntDoclet {
                         + "' is not an attribute setter nor a subelement adder/creator"
                     ));
                     return new Link(null, to.name());
+                }
+
+                if (to instanceof RootDoc) {
+                    // {@ rootDoc} tag.
+                    return new Link("..", "???");
                 }
 
                 return new Link(null, to.name());
