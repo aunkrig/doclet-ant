@@ -271,6 +271,12 @@ class AntDoclet {
 
     /**
      * The HTML character set for this document.
+     * <p>
+     *   If set, then the following tag appears in the {@code <head>} of all generated documents:
+     * </p>
+     * <p>
+     *   {@code <meta http-equiv="Content-Type" content="text/html; charset="}<var>charset</var>{@code ">}
+     * </p>
      */
     @CommandLineOption(name = "-charset") public static void
     setCharset(String name) { AntDoclet.options.htmlCharset = name; }
@@ -671,7 +677,8 @@ class AntDoclet {
      *   </dd>
      *   <dt><code>{&#64;ant.group <var>group-name</var>}</code></dt>
      *   <dd>
-     *     Attribute and subelement descriptions are grouped by group name
+     *     Attributes (or subelements) with equal <var>group-name</var> are grouped, and the <var>group-name</var> is
+     *     rendered as a heading above the group.
      *   </dd>
      *   <dt><code>{&#64;ant.subelementOrder inheritedFirst}</code></dt>
      *   <dd>
