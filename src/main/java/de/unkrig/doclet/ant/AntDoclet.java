@@ -1224,7 +1224,7 @@ class AntDoclet {
                         }
                     }
 
-                    // Link to a subelement of this ANT type?
+                    // Link to a (publicly declared) subelement of this ANT type?
                     if (antType != null) {
                         for (AntSubelement se : antType.subelements) {
                             if (toClass == se.type) {
@@ -1309,7 +1309,7 @@ class AntDoclet {
                                 }
                             }
 
-                            // Link to a subelement (of the same or a different ANT type)?
+                            // Link to an ad-hoc subelement (of the same or a different ANT type)?
                             for (AntSubelement se : t.subelements) {
                                 if (se.methodDoc == toMethod) {
                                     String fragment = (
@@ -1322,7 +1322,11 @@ class AntDoclet {
                                         label = "&lt;" + se.name + "&gt;";
                                     } else {
                                         AntTypeGroup atg = antTypeGroups.get(se.type.asClassDoc());
-                                        label = atg != null ? "Any " + atg.name : "???";
+                                        label = (
+                                            atg != null
+                                            ? "Any " + atg.name
+                                            : "<code>" + se.type.asClassDoc().qualifiedName() + "</code>"
+                                        );
                                     }
                                     return new Link(
                                         (               // href
@@ -1342,15 +1346,25 @@ class AntDoclet {
                                 if (params.length != 1) continue;
                                 for (MethodDoc md : Docs.methods(params[0].type().asClassDoc(), false, true)) {
                                     if (md == toMethod) {
-                                        String attributeName = md.name();
+                                        String labelHtml = md.name();
                                         {
-                                            Matcher m = AntDoclet.SET_ATTRIBUTE_METHOD_NAME.matcher(attributeName);
-                                            if (m.matches()) {
-                                                attributeName = (
+                                            Matcher m;
+                                            if ((m = AntDoclet.SET_ATTRIBUTE_METHOD_NAME.matcher(labelHtml)).matches()) {
+                                                labelHtml = (
                                                     Notations
                                                     .fromCamelCase(m.group("attributeName"))
                                                     .toLowerCamelCase()
-                                                );
+                                                ) + "=\"...\"";
+                                            } else
+                                            if (
+                                                (m = AntDoclet.ADD_SUBELEMENT_METHOD_NAME.matcher(labelHtml)).matches()
+                                                || (m = AntDoclet.CREATE_SUBELEMENT_METHOD_NAME.matcher(labelHtml)).matches()
+                                            ) {
+                                                labelHtml = "&lt;" + (
+                                                    Notations
+                                                    .fromCamelCase(m.group("subelementName"))
+                                                    .toLowerCamelCase()
+                                                ) + "&gt;";
                                             }
                                         }
                                         String fragment = '#' + md.containingClass().qualifiedName() + "/" + md.name();
@@ -1361,7 +1375,7 @@ class AntDoclet {
                                                 typeGroup == tg ? t.name + ".html" + fragment :
                                                 "../" + tg.subdir + '/' + t.name + ".html" + fragment
                                             ),
-                                            attributeName + "=\"...\""
+                                            labelHtml
                                         );
                                     }
                                 }
