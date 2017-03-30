@@ -26,80 +26,115 @@
 
 package test;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.File;
 import java.net.URL;
-import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 
+import org.junit.Assert;
 import org.junit.Test;
 
-import de.unkrig.commons.lang.protocol.RunnableWhichThrows;
-import de.unkrig.commons.lang.security.ExitCatcher;
-import de.unkrig.doclet.ant.AntDoclet;
+import de.unkrig.commons.file.FileUtil;
+import test.JavadocExecutor.OfflineLink;
 
-public class AntologyTest {
+public
+class AntologyTest {
 
-    @Test
-    public void test() throws Exception {
+    @Test public void
+    test() throws Exception {
 
-        String ws = "C:/workspaces/antology";
-        String mr = "C:/Users/Arno/.m2/repository";
-        String ps = System.getProperty("path.separator");
-        String[] args = {
-            "-d", "destdir",
-            "-doclet", AntDoclet.class.getName(),
-            "-docletpath", (
-                ws + "/antology/target/classes"
-                + ps + mr + "/org/apache/ant/ant/1.9.8/ant-1.9.8.jar"
-            ),
-            "-sourcepath", ws + "/antology/src/main/java",
-            "-classpath",
-            (
-                ws + "/commons-doclet/target/classes"
-                + ps + ws + "/commons-io/target/classes"
-                + ps + ws + "/commons-lang/target/classes"
-                + ps + ws + "/commons-net/target/classes"
-                + ps + ws + "/commons-nullanalysis/target/classes"
-                + ps + ws + "/commons-text/target/classes"
-                + ps + ws + "/commons-util/target/classes"
-                + ps + mr + "/org/apache/ant/ant/1.9.8/ant-1.9.8.jar"
-                + ps + mr + "/commons-net/commons-net/1.4.0/commons-net-1.4.0.jar"
-            ),
-            "-linkoffline", "http://commons.unkrig.de/javadoc",                      ws + "/antology/package-lists/de.unkrig.commons",
-            "-linkoffline", "https://commons.apache.org/proper/commons-net/apidocs", ws + "/antology/package-lists/org.apache.commons.net",
-            "-linkoffline", "http://api.dpml.net/org/apache/ant/1.7.0",              ws + "/antology/package-lists/org.apache.ant",
-            "-linkoffline", "https://docs.oracle.com/javase/8/docs/api",             ws + "/antology/package-lists/jre",
+        File destDir = new File("destdir");
+        
+        if (destDir.exists()) FileUtil.deleteRecursively(destDir);
+        
+        String ws = "..";
 
-            "-antlib-file", ws + "/antology/src/main/resources/de/unkrig/antology/ant.xml",
+        JavadocExecutor je = new JavadocExecutor();
+        
+        je.setDestDir(destDir);
+        je.setDocletClassName("de.unkrig.doclet.ant.AntDoclet");
+        je.setDocletPath(
+            new File("target/classes"),
+            new File(ws + "/antology/target/classes"), // For antology's "enumerated attributes".
+            getClassPathEntry("/org/apache/ant/ant/1.9.8/ant-1.9.8.jar")
+        );
+        je.setSourcepath(new File(ws + "/antology/src/main/java"));
+        je.setClasspath(
+            new File(ws + "/commons-doclet/target/classes"),
+            new File(ws + "/commons-io/target/classes"),
+            new File(ws + "/commons-lang/target/classes"),
+            new File(ws + "/commons-net/target/classes"),
+            new File(ws + "/commons-nullanalysis/target/classes"),
+            new File(ws + "/commons-text/target/classes"),
+            new File(ws + "/commons-util/target/classes"),
+            getClassPathEntry("/org/apache/ant/ant/1.9.8/ant-1.9.8.jar"),
+            getClassPathEntry("/commons-net/commons-net/1.4.0/commons-net-1.4.0.jar")
+        );
+        je.setAntlibFile(new File(ws + "/antology/src/main/resources/de/unkrig/antology/ant.xml"));
+        je.setOverviewFile(new File(ws + "/antology/src/main/javadoc/overview.html"));
+        je.setOfflineLinks( // SUPPRESS CHECKSTYLE LineLength:4
+            new OfflineLink(new URL("http://commons.unkrig.de/javadoc"),                      ws + "/antology/package-lists/de.unkrig.commons"),
+            new OfflineLink(new URL("https://commons.apache.org/proper/commons-net/apidocs"), ws + "/antology/package-lists/org.apache.commons.net"),
+            new OfflineLink(new URL("http://api.dpml.net/org/apache/ant/1.7.0"),              ws + "/antology/package-lists/org.apache.ant"),
+            new OfflineLink(new URL("https://docs.oracle.com/javase/8/docs/api"),             ws + "/antology/package-lists/jre")
+        );
 
-            "-overview", ws + "/antology/src/main/javadoc/overview.html",
-
+        je.execute(
             "de.unkrig.antology",
             "de.unkrig.antology.condition",
             "de.unkrig.antology.filter",
             "de.unkrig.antology.task",
             "de.unkrig.antology.type",
-            "de.unkrig.antology.util",
-        };
+            "de.unkrig.antology.util"
+        );
 
-        ClassLoader cl = new URLClassLoader(new URL[] {
-            new URL("file:/" + System.getProperty("java.home") + "/lib/tools.jars")
-        }, ClassLoader.getSystemClassLoader());
+        // Verify that the "usual" ANTDOC output files and directories were created.
+        Assert.assertEquals(
+            new HashSet<String>(Arrays.asList(
+                "chainableReaders",
+                "conditions",
+                "resourceCollections",
+                "tasks",
+                "alldefinitions-frame.html",
+                "alldefinitions-noframe.html",
+                "index.html",
+                "overview-summary.html",
+                "package-list",
+                "stylesheet.css",
+                "stylesheet2.css"
+            )),
+            new HashSet<String>(Arrays.asList(destDir.list()))
+        );
+        
+        FileUtil.deleteRecursively(destDir);
+    }
 
-        Method mainMethod = cl.loadClass("com.sun.tools.javadoc.Main").getMethod("main", String[].class);
-
-        ExitCatcher.catchExit(new RunnableWhichThrows<Exception>() {
-
-            @Override public void
-            run() throws Exception {
-                try {
-                    mainMethod.invoke(null, (Object) args);
-                } catch (InvocationTargetException ite) {
-                    Throwable te = ite.getTargetException();
-                    if (te instanceof Exception) throw (Exception) te;
-                    throw ite;
-                }
-            }
-        });
+    private static File
+    getClassPathEntry(String classpathEntryNameSuffix) {
+        
+        classpathEntryNameSuffix = new File(classpathEntryNameSuffix).getPath();
+        
+        for (File cpe : CLASSPATH_ENTRIES) {
+            if (cpe.getPath().endsWith(classpathEntryNameSuffix)) return cpe;
+        }
+        
+        Assert.fail((
+            "Entry suffix\""
+            + classpathEntryNameSuffix
+            + "\" not found on classpath \""
+            + CLASSPATH_ENTRIES
+            + "\""
+        ));
+        
+        return new File("???");
+    }
+    
+    private static final List<File> CLASSPATH_ENTRIES = new ArrayList<File>();
+    static {
+        for (String s : System.getProperty("java.class.path").split(File.pathSeparator)) {
+            CLASSPATH_ENTRIES.add(new File(s));
+        }
     }
 }
