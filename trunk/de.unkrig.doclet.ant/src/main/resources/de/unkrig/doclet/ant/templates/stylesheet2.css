@@ -1,4 +1,9 @@
 
+.contentContainer .description li {
+    padding-top:      4px;
+    padding-bottom:   4px;
+}
+
 .contentContainer .description dl dt {
     margin:           2px 0px 0px 10px;
     color:            #4E4E4E;
