@@ -1349,7 +1349,7 @@ class AntDoclet {
                                         String labelHtml = md.name();
                                         {
                                             Matcher m;
-                                            if ((m = AntDoclet.SET_ATTRIBUTE_METHOD_NAME.matcher(labelHtml)).matches()) {
+                                            if ((m = AntDoclet.SET_ATTRIBUTE_METHOD_NAME.matcher(labelHtml)).matches()) { // SUPPRESS CHECKSTYLE LineLength
                                                 labelHtml = (
                                                     Notations
                                                     .fromCamelCase(m.group("attributeName"))
@@ -1358,7 +1358,7 @@ class AntDoclet {
                                             } else
                                             if (
                                                 (m = AntDoclet.ADD_SUBELEMENT_METHOD_NAME.matcher(labelHtml)).matches()
-                                                || (m = AntDoclet.CREATE_SUBELEMENT_METHOD_NAME.matcher(labelHtml)).matches()
+                                                || (m = AntDoclet.CREATE_SUBELEMENT_METHOD_NAME.matcher(labelHtml)).matches() // SUPPRESS CHECKSTYLE LineLength
                                             ) {
                                                 labelHtml = "&lt;" + (
                                                     Notations

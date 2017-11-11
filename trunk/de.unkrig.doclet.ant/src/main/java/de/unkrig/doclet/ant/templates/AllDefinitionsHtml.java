@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// CHECKSTYLE Wrap:OFF
+// SUPPRESS CHECKSTYLE WrapMethod:9999
 
 package de.unkrig.doclet.ant.templates;
 
