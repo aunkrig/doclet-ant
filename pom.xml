@@ -8,7 +8,7 @@
 
 	<groupId>de.unkrig</groupId>
 	<artifactId>doclet-ant</artifactId>
-	<version>1.0.7-SNAPSHOT</version>
+	<version>1.0.7</version>
 
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
@@ -20,7 +20,7 @@
 		<dependency>
 			<groupId>de.unkrig</groupId>
 			<artifactId>no-template-core</artifactId>
-			<version>1.0.4</version>
+			<version>1.0.5</version>
 		</dependency>
 		<dependency>
 			<groupId>com.sun</groupId>
@@ -38,7 +38,7 @@
 		<dependency>
 			<groupId>de.unkrig.commons</groupId>
 			<artifactId>commons-doclet</artifactId>
-			<version>1.2.10</version>
+			<version>1.2.12</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.ant</groupId>
@@ -55,7 +55,7 @@
 		<dependency>
 			<groupId>de.unkrig.commons</groupId>
 			<artifactId>commons-file</artifactId>
-			<version>1.2.10</version>
+			<version>1.2.12</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -176,7 +176,7 @@
 							<docletArtifact>
 								<groupId>de.unkrig</groupId>
 								<artifactId>doclet-main</artifactId>
-								<version>1.0.2</version>
+								<version>1.0.4</version>
 							</docletArtifact>
 
 							<additionalparam>
