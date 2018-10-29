@@ -56,7 +56,7 @@ import de.unkrig.commons.lang.AssertionUtil;
 import de.unkrig.commons.lang.protocol.Longjump;
 import de.unkrig.commons.nullanalysis.Nullable;
 import de.unkrig.commons.text.Notations;
-import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
+import de.unkrig.commons.util.collections.ElementWithContext;
 import de.unkrig.doclet.ant.AntDoclet;
 import de.unkrig.doclet.ant.AntDoclet.AntAttribute;
 import de.unkrig.doclet.ant.AntDoclet.AntSubelement;

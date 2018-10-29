@@ -86,8 +86,8 @@ import de.unkrig.commons.text.xml.XmlUtil;
 import de.unkrig.commons.util.CommandLineOptions;
 import de.unkrig.commons.util.annotation.CommandLineOption;
 import de.unkrig.commons.util.annotation.CommandLineOptionGroup;
+import de.unkrig.commons.util.collections.ElementWithContext;
 import de.unkrig.commons.util.collections.IterableUtil;
-import de.unkrig.commons.util.collections.IterableUtil.ElementWithContext;
 import de.unkrig.doclet.ant.templates.AllDefinitionsHtml;
 import de.unkrig.doclet.ant.templates.IndexHtml;
 import de.unkrig.doclet.ant.templates.OverviewSummaryHtml;
@@ -852,10 +852,10 @@ class AntDoclet {
                         @Override public void
                         consume(TypeHtml typeHtml) throws RuntimeException {
                             typeHtml.render(
-                                typeGroup,
-                                antTypeGroups.values(),
-                                atwc,
-                                html,
+                                typeGroup,              // typeGroup
+                                antTypeGroups.values(), // allTypeGroups
+                                atwc,                   // atwc
+                                html,                   // html
                                 AntDoclet.rootDoc,
                                 AntDoclet.options
                             );
