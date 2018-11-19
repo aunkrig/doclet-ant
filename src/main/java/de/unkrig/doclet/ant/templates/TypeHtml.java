@@ -567,7 +567,7 @@ class TypeHtml extends AbstractDetailHtml {
             || "org.apache.tools.ant.types.Path".equals(qualifiedAttributeTypeName)
             || "java.lang.Class".equals(qualifiedAttributeTypeName)
             || "java.lang.Object".equals(qualifiedAttributeTypeName)
-            || "de.unkrig.antcontrib.util.Regex".equals(qualifiedAttributeTypeName)
+            || "java.util.Regex".equals(qualifiedAttributeTypeName)
         ) {
             rhs = "<var>" + Notations.fromCamelCase(attributeType.simpleTypeName()).toLowerCaseHyphenated() + "</var>";
             if (defaultValue != null) rhs += "|<u>" + defaultValue + "</u>";
