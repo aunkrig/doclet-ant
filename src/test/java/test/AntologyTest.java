@@ -75,7 +75,7 @@ class AntologyTest {
         je.setAntlibFile(new File(ws + "/antology/src/main/resources/de/unkrig/antology/ant.xml"));
         je.setOverviewFile(new File(ws + "/antology/src/main/javadoc/overview.html"));
         je.setOfflineLinks( // SUPPRESS CHECKSTYLE LineLength:4
-            new OfflineLink(new URL("http://commons.unkrig.de/javadoc"),                      ws + "/antology/package-lists/de.unkrig.commons"),
+            new OfflineLink(new URL("http://commons.unkrig.de/commons-util/apidocs"),         ws + "/antology/package-lists/de.unkrig.commons-util"),
             new OfflineLink(new URL("https://commons.apache.org/proper/commons-net/apidocs"), ws + "/antology/package-lists/org.apache.commons.net"),
             new OfflineLink(new URL("http://api.dpml.net/org/apache/ant/1.7.0"),              ws + "/antology/package-lists/org.apache.ant"),
             new OfflineLink(new URL("https://docs.oracle.com/javase/8/docs/api"),             ws + "/antology/package-lists/jre")
@@ -108,7 +108,7 @@ class AntologyTest {
             new HashSet<String>(Arrays.asList(destDir.list()))
         );
         
-        FileUtil.deleteRecursively(destDir);
+//        FileUtil.deleteRecursively(destDir);
     }
 
     private static File
