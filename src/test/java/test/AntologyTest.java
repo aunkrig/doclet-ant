@@ -56,25 +56,22 @@ class AntologyTest {
         je.setDestDir(destDir);
         je.setDocletClassName("de.unkrig.doclet.ant.AntDoclet");
         je.setDocletPath(
-            new File("target/classes"),
-            new File(ws + "/antology/target/classes"), // For antology's "enumerated attributes".
+            assertIsDirectory(new File("target/classes")),
+            assertIsDirectory(new File(ws + "/antology/target/classes")), // For antology's "enumerated attributes".
             getClassPathEntry("/org/apache/ant/ant/1.9.8/ant-1.9.8.jar")
         );
-        je.setSourcepath(new File(ws + "/antology/src/main/java"));
+
+        je.setSourcepath(assertIsDirectory(new File(ws + "/antology/src/main/java")));
+        
         je.setClasspath(
-            new File(ws + "/commons-doclet/target/classes"),
-            new File(ws + "/commons-io/target/classes"),
-            new File(ws + "/commons-lang/target/classes"),
-            new File(ws + "/commons-net/target/classes"),
-            new File(ws + "/commons-nullanalysis/target/classes"),
-            new File(ws + "/commons-text/target/classes"),
-            new File(ws + "/commons-util/target/classes"),
+            assertIsFile(new File(ws + "/antology/target/antology-2.0.6-SNAPSHOT-jar-with-dependencies.jar")),
             getClassPathEntry("/org/apache/ant/ant/1.9.8/ant-1.9.8.jar"),
             getClassPathEntry("/commons-net/commons-net/1.4.0/commons-net-1.4.0.jar")
         );
-        je.setAntlibFile(new File(ws + "/antology/src/main/resources/de/unkrig/antology/ant.xml"));
-        je.setOverviewFile(new File(ws + "/antology/src/main/javadoc/overview.html"));
-        je.setOfflineLinks( // SUPPRESS CHECKSTYLE LineLength:4
+        je.setAntlibFile(assertIsFile(new File(ws + "/antology/src/main/resources/de/unkrig/antology/ant.xml")));
+        je.setOverviewFile(assertIsFile(new File(ws + "/antology/src/main/javadoc/overview.html")));
+        je.setOfflineLinks( // SUPPRESS CHECKSTYLE LineLength:5
+            new OfflineLink(new URL("http://commons.unkrig.de/commons-text/apidocs"),         ws + "/antology/package-lists/de.unkrig.commons-text"),
             new OfflineLink(new URL("http://commons.unkrig.de/commons-util/apidocs"),         ws + "/antology/package-lists/de.unkrig.commons-util"),
             new OfflineLink(new URL("https://commons.apache.org/proper/commons-net/apidocs"), ws + "/antology/package-lists/org.apache.commons.net"),
             new OfflineLink(new URL("http://api.dpml.net/org/apache/ant/1.7.0"),              ws + "/antology/package-lists/org.apache.ant"),
@@ -109,6 +106,18 @@ class AntologyTest {
         );
         
 //        FileUtil.deleteRecursively(destDir);
+    }
+
+    private static File
+    assertIsFile(File file) {
+        Assert.assertTrue(file + " is not a normal file", file.isFile());
+        return file;
+    }
+
+    private static File
+    assertIsDirectory(File file) {
+        Assert.assertTrue(file + " is not a directory", file.isDirectory());
+        return file;
     }
 
     private static File
