@@ -93,6 +93,9 @@ import de.unkrig.doclet.ant.templates.IndexHtml;
 import de.unkrig.doclet.ant.templates.OverviewSummaryHtml;
 import de.unkrig.doclet.ant.templates.TypeHtml;
 import de.unkrig.notemplate.NoTemplate;
+import de.unkrig.notemplate.javadocish.IndexPages;
+import de.unkrig.notemplate.javadocish.IndexPages.IndexEntry;
+import de.unkrig.notemplate.javadocish.templates.AbstractRightFrameHtml;
 import de.unkrig.notemplate.javadocish.Options;
 
 /**
@@ -923,6 +926,37 @@ class AntDoclet {
             true,
             AntDoclet.options.documentCharset,
             AntDoclet.options.quiet
+        );
+
+        // Create a single-index file, or a set of initial-based index files.
+        Collection<IndexEntry> indexEntries = new ArrayList<IndexPages.IndexEntry>();
+        for (AntTypeGroup atg : antTypeGroups.values()) {
+            for (AntType at : atg.types) {
+                try {
+                    String link          = (options.splitIndex ? "../" : "") + atg.subdir + "/" + at.name + ".html";
+                    String firstSentence = html.fromTags(at.classDoc.firstSentenceTags(), rootDoc, rootDoc);
+                    indexEntries.add(new IndexEntry() {
+                        @Override public String getKey()              { return at.name;       }
+                        @Override public String getLink()             { return link;          }
+                        @Override public String getExplanation()      { return atg.name;      }
+                        @Override public String getShortDescription() { return firstSentence; }
+                    });
+                } catch (Longjump l) {
+                    ;
+                }
+            }
+        }
+        IndexPages.createIndex(
+            indexEntries,
+            AntDoclet.options,
+            new String[] {                          // nav1
+                "Overview",            options.splitIndex ? "../overview-summary.html" : "overview-summary.html",
+                "Task",                AbstractRightFrameHtml.DISABLED,
+                "Resource collection", AbstractRightFrameHtml.DISABLED,
+                "Chainable reader",    AbstractRightFrameHtml.DISABLED,
+                "Condition",           AbstractRightFrameHtml.DISABLED,
+                "Index",               AbstractRightFrameHtml.HIGHLIT
+            }
         );
 
         // "Render" an empty "package-list" file. That comes in handy in envorinments where you cannot control the
