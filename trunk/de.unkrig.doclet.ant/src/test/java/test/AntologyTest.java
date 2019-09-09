@@ -64,7 +64,7 @@ class AntologyTest {
         je.setSourcepath(assertIsDirectory(new File(ws + "/antology/src/main/java")));
         
         je.setClasspath(
-            assertIsFile(new File(ws + "/antology/target/antology-2.0.6-SNAPSHOT-jar-with-dependencies.jar")),
+            assertIsFile(new File(ws + "/antology/target/antology-2.0.8-SNAPSHOT-jar-with-dependencies.jar")),
             getClassPathEntry("/org/apache/ant/ant/1.9.8/ant-1.9.8.jar"),
             getClassPathEntry("/commons-net/commons-net/1.4.0/commons-net-1.4.0.jar")
         );
@@ -97,6 +97,7 @@ class AntologyTest {
                 "alldefinitions-frame.html",
                 "alldefinitions-noframe.html",
                 "index.html",
+                "index-all.html",
                 "overview-summary.html",
                 "package-list",
                 "stylesheet.css",

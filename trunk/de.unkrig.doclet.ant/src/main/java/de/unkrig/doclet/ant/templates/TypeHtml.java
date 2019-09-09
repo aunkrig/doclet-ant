@@ -288,7 +288,7 @@ class TypeHtml extends AbstractDetailHtml {
             nav1.add(atg == typeGroup ? AbstractRightFrameHtml.HIGHLIT : AbstractRightFrameHtml.DISABLED);
         }
         nav1.add("Index");
-        nav1.add(home + (options.splitIndex ? "index-files/index-1.html" : "index-all.html"));
+        nav1.add(home + (options.splitIndex ? "../index-files/index-1.html" : "../index-all.html"));
 
         super.rDetail(
             typeGroup.typeTitleMf.format(new String[] { antType.name }),   // windowTitle
